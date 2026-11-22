@@ -21,7 +21,7 @@ git push
 
 ## Situazione attuale
 
-Il sito è già online su **https://pier-200.github.io/GestionalePdS/**, servito dal ramo
+Il sito è già online su **https://4-scorpione.github.io/GestionalePdS/**, servito dal ramo
 `gh-pages`: lo aggiorna `npm run pubblica`, che compila e sostituisce il contenuto del ramo.
 
 Attivando `pubblica.yml` la pubblicazione diventa automatica a ogni push su `main`; in quel caso

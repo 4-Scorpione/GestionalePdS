@@ -4,7 +4,7 @@ Applicazione web per la gestione dei **progetti di spesa (PdS)** di un ufficio p
 
 Ogni schermata lavora su **un singolo esercizio finanziario**, scelto dalla tendina in alto. Numero del PdS ed esercizio si inseriscono separatamente (`18` + `2026`) e si leggono insieme come `18/2026`. I protocolli si digitano come numero puro (`0089567`) con la relativa data e compaiono come «Prot. n. 0089567 del 15/01/2026».
 
-- **Applicazione online: https://pier-200.github.io/GestionalePdS/** — si apre da computer e smartphone senza installare nulla.
+- **Applicazione online: https://4-scorpione.github.io/GestionalePdS/** — si apre da computer e smartphone senza installare nulla.
 - Si usa **solo con un link**, da computer e smartphone, senza installare nulla.
 - È ospitata su **GitHub Pages** e funziona **da sola nel cloud**: non serve alcun computer acceso; ogni utente accede in autonomia dal proprio dispositivo.
 - L'archivio dei dati è **intercambiabile** (si sceglie nel file `public/config.json`, senza ricompilare):
