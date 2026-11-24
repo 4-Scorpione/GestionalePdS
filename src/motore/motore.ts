@@ -3,13 +3,14 @@ import type { Comando, DatiPds, FileAllegato, RisultatoComando } from '../domain
 import { isDataISO } from '../domain/date';
 import { ErroreApp } from '../domain/errori';
 import { sommaCentesimi } from '../domain/importi';
-import { CAMPI_DATI_PDS, isAdmin, puo } from '../domain/permessi';
+import { CAMPI_DATI_PDS, CAMPI_SALDO_PDS, isAdmin, puo } from '../domain/permessi';
 import { differenze, etichettaCampo, istantanea, valoriUguali } from '../domain/registro';
 import type {
   AccordoQuadro,
   AreaPermesso,
   AttoAdesione,
   Capitolo,
+  DataISO,
   DatiCondivisi,
   EntitaRegistro,
   FondoIdv,
@@ -24,7 +25,7 @@ import type {
 } from '../domain/tipi';
 import {
   chiaveCapitolo,
-  normalizzaTermine,
+  normalizzaPds,
   validaDatiAccordo,
   validaDatiAllegato,
   validaDatiAtto,
@@ -32,6 +33,7 @@ import {
   validaDatiPagamento,
   validaDatiPds,
   validaDatiUtente,
+  validaEconomia,
   validaPassword,
 } from '../domain/validazione';
 import type { DatiUtente } from '../domain/comandi';
@@ -68,13 +70,26 @@ export interface EsitoMotore {
 const CAMPI_CAPITOLO = ['esercizio', 'codice', 'decreto', 'descrizione', 'finanziato', 'sforamento_ignorato', 'sforamento_note'] as const;
 /** Campi del capitolo riservati all'amministratore (autorizzazione del superamento del finanziato). */
 const CAMPI_CAPITOLO_ADMIN = ['sforamento_ignorato', 'sforamento_note'] as const;
-const CAMPI_PAGAMENTO = ['data', 'importo', 'riferimento', 'note'] as const;
+const CAMPI_PAGAMENTO = ['data', 'importo', 'riferimento', 'fattura', 'saldo', 'codice_titolo', 'codice_memoriale', 'data_titolo', 'note'] as const;
 const CAMPI_ALLEGATO = ['tipo', 'titolo', 'url', 'file_nome'] as const;
 const CAMPI_UTENTE = ['username', 'nome', 'ruolo', 'attivo', 'permessi'] as const;
-const CAMPI_SALDO = ['saldato', 'data_saldo', 'totale_pagato_saldo'] as const;
+const CAMPI_SALDO = CAMPI_SALDO_PDS;
 const CAMPI_ELIMINAZIONE = ['eliminato_at', 'eliminato_da'] as const;
 const CAMPI_ACCORDO = ['numero', 'oggetto', 'ditta', 'dec', 'protocollo_stipula', 'data_stipula', 'durata_giorni', 'importo', 'note'] as const;
-const CAMPI_ATTO = ['numero', 'oggetto', 'protocollo_stipula', 'data_stipula', 'durata_giorni', 'valore', 'note'] as const;
+const CAMPI_ATTO = [
+  'numero',
+  'oggetto',
+  'importo_inviato',
+  'protocollo_invio',
+  'data_invio',
+  'protocollo_stipula',
+  'data_stipula',
+  'durata_giorni',
+  'valore',
+  'incentivabile',
+  'importo_incentivi',
+  'note',
+] as const;
 
 export function riferimentoCapitolo(c: Pick<Capitolo, 'codice' | 'esercizio' | 'decreto'>): string {
   return etichettaCapitolo(c);
@@ -244,6 +259,25 @@ function verificaNonSaldato(p: Pds, numero: string) {
   if (p.saldato) {
     throw new ErroreApp('VINCOLO', `Il PdS ${numero} risulta saldato: annulla il saldo per modificare i pagamenti.`);
   }
+}
+
+/** I dati del titolo di spesa valgono solo per i PdS con DAC. */
+function conTitolo<T extends Partial<Pagamento>>(p: Pds, pagamento: T): T {
+  return p.dac ? pagamento : { ...pagamento, codice_titolo: null, codice_memoriale: null, data_titolo: null };
+}
+
+/**
+ * Chiude il PdS: registra il totale pagato a saldo. L'economia torna quella
+ * calcolata (stipulato − incentivi − pagato), correggibile in seguito.
+ */
+function chiudiSaldo(x: Esecuzione, p: Pds, dataSaldo: DataISO, rif: string) {
+  if (!p.data_stipula || p.valore_stipula == null) {
+    throw new ErroreApp('VINCOLO', 'Per confermare il saldo occorre prima registrare la stipula (data e valore).');
+  }
+  const totale = x.dati.pagamenti.filter((k) => k.pds_id === p.id).reduce((t, k) => t + k.importo, 0);
+  const finale: Pds = { ...p, saldato: true, data_saldo: dataSaldo, totale_pagato_saldo: totale, economia_importo: null, economia_note: null, ...x.tracciaModifica() };
+  x.dati = { ...x.dati, pds: sostituisci(x.dati.pds, finale) };
+  x.registra('pds', p.id, p.id, 'modifica', rif, differenze(p, finale, CAMPI_SALDO));
 }
 
 /** Sui PdS spostati tra gli eliminati non si può operare: va prima ripristinato. */
@@ -454,6 +488,7 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       x.richiedi('accordi', undefined, 'gestire gli atti di adesione');
       const accordo = x.accordo(c.accordo_id);
       const d = validaDatiAtto(c.dati) as Required<ReturnType<typeof validaDatiAtto>>;
+      if (!d.incentivabile) d.importo_incentivi = null;
       if (x.dati.atti.some((a) => a.accordo_id === accordo.id && a.numero.trim().toLowerCase() === d.numero.trim().toLowerCase())) {
         throw new ErroreApp('DUPLICATO', `L'atto di adesione ${d.numero} esiste già su questo accordo quadro.`);
       }
@@ -470,6 +505,7 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       verificaConflitto('atto', corrente, c.modifiche, c.originale);
       const d = validaDatiAtto(c.modifiche, true);
       const aggiornato: AttoAdesione = { ...corrente, ...d };
+      if (!aggiornato.incentivabile) aggiornato.importo_incentivi = null;
       const diff = differenze(corrente, aggiornato, CAMPI_ATTO);
       if (Object.keys(diff).length === 0) return { id: corrente.id };
       if (
@@ -507,7 +543,7 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       x.richiedi('pds_crea', capitolo, 'creare PdS');
       x.verificaIdv(d, capitolo);
       x.verificaCollegamentoAccordo(d);
-      const base = normalizzaTermine(d);
+      const base = normalizzaPds(d);
       const nuovo: Pds = {
         id: x.ctx.nuovoId(),
         ...base,
@@ -537,7 +573,7 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       if (d.capitolo_id && d.capitolo_id !== corrente.capitolo_id) {
         x.richiedi('pds_dati', x.capitolo(d.capitolo_id), 'spostare il PdS');
       }
-      const aggiornato: Pds = normalizzaTermine({ ...corrente, ...d });
+      const aggiornato: Pds = normalizzaPds({ ...corrente, ...d });
       if (aggiornato.accordo_id == null) aggiornato.atto_adesione_id = null;
       x.verificaCollegamentoAccordo(aggiornato);
       const diff = differenze(corrente, aggiornato, CAMPI_DATI_PDS);
@@ -599,9 +635,11 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       verificaNonEliminato(p, rif);
       verificaNonSaldato(p, rif);
       const d = validaDatiPagamento(c.dati) as Required<ReturnType<typeof validaDatiPagamento>>;
-      const nuovo: Pagamento = { id: x.ctx.nuovoId(), pds_id: p.id, ...d, ...x.tracciaNuovo() };
+      const nuovo: Pagamento = conTitolo(p, { id: x.ctx.nuovoId(), pds_id: p.id, ...d, ...x.tracciaNuovo() });
       x.dati = { ...x.dati, pagamenti: [...x.dati.pagamenti, nuovo] };
       x.registra('pagamento', nuovo.id, p.id, 'creazione', `PdS ${rif}`, istantanea(nuovo, CAMPI_PAGAMENTO, true));
+      // il pagamento a saldo è l'ultimo del PdS e ne conferma il saldo
+      if (nuovo.saldo) chiudiSaldo(x, p, nuovo.data, rif);
       return { id: nuovo.id };
     }
 
@@ -614,12 +652,14 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       verificaNonSaldato(p, rif);
       verificaConflitto('pagamento', corrente, c.modifiche, c.originale);
       const d = validaDatiPagamento(c.modifiche, true);
-      const aggiornato: Pagamento = { ...corrente, ...d };
+      const aggiornato: Pagamento = conTitolo(p, { ...corrente, ...d });
       const diff = differenze(corrente, aggiornato, CAMPI_PAGAMENTO);
       if (Object.keys(diff).length === 0) return { id: corrente.id };
       const finale = { ...aggiornato, ...x.tracciaModifica() };
       x.dati = { ...x.dati, pagamenti: sostituisci(x.dati.pagamenti, finale) };
       x.registra('pagamento', finale.id, p.id, 'modifica', `PdS ${rif}`, diff);
+      // segnare come «a saldo» un pagamento già registrato chiude il PdS
+      if (finale.saldo) chiudiSaldo(x, p, finale.data, rif);
       return { id: finale.id };
     }
 
@@ -641,21 +681,23 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       x.richiedi('pds_pagamenti', x.capitolo(p.capitolo_id), 'confermare il saldo');
       verificaNonEliminato(p, rif);
       if (p.saldato) throw new ErroreApp('VINCOLO', `Il saldo del PdS ${rif} è già stato confermato.`);
-      if (!p.data_stipula || p.valore_stipula == null) {
-        throw new ErroreApp('VINCOLO', 'Per confermare il saldo occorre prima registrare la stipula (data e valore).');
-      }
       if (!isDataISO(c.data_saldo)) throw new ErroreApp('VALIDAZIONE', 'Data del saldo: indicare una data valida.');
-      const data_saldo = c.data_saldo;
-      if (c.pagamento_finale) {
-        const d = validaDatiPagamento(c.pagamento_finale) as Required<ReturnType<typeof validaDatiPagamento>>;
-        const nuovo: Pagamento = { id: x.ctx.nuovoId(), pds_id: p.id, ...d, ...x.tracciaNuovo() };
-        x.dati = { ...x.dati, pagamenti: [...x.dati.pagamenti, nuovo] };
-        x.registra('pagamento', nuovo.id, p.id, 'creazione', `PdS ${rif}`, istantanea(nuovo, CAMPI_PAGAMENTO, true));
-      }
-      const totale = x.dati.pagamenti.filter((k) => k.pds_id === p.id).reduce((t, k) => t + k.importo, 0);
-      const finale: Pds = { ...p, saldato: true, data_saldo, totale_pagato_saldo: totale, ...x.tracciaModifica() };
+      chiudiSaldo(x, p, c.data_saldo, rif);
+      return { id: p.id };
+    }
+
+    case 'saldo.economia': {
+      const p = x.pds(c.pds_id);
+      const rif = x.riferimentoPds(p);
+      x.richiedi('pds_pagamenti', x.capitolo(p.capitolo_id), "correggere l'economia");
+      verificaNonEliminato(p, rif);
+      if (!p.saldato) throw new ErroreApp('VINCOLO', `L'economia si registra dopo il saldo: il PdS ${rif} non risulta saldato.`);
+      const d = validaEconomia(c.economia, c.note);
+      const finale: Pds = { ...p, economia_importo: d.economia, economia_note: d.note, ...x.tracciaModifica() };
+      const diff = differenze(p, finale, CAMPI_SALDO);
+      if (Object.keys(diff).length === 0) return { id: p.id };
       x.dati = { ...x.dati, pds: sostituisci(x.dati.pds, finale) };
-      x.registra('pds', p.id, p.id, 'modifica', rif, differenze(p, finale, CAMPI_SALDO));
+      x.registra('pds', p.id, p.id, 'modifica', rif, diff);
       return { id: p.id };
     }
 
@@ -665,9 +707,18 @@ function esegui(x: Esecuzione, c: Comando): RisultatoComando {
       x.richiedi('pds_pagamenti', x.capitolo(p.capitolo_id), 'annullare il saldo');
       verificaNonEliminato(p, rif);
       if (!p.saldato) throw new ErroreApp('VINCOLO', `Il PdS ${rif} non risulta saldato.`);
-      const finale: Pds = { ...p, saldato: false, data_saldo: null, totale_pagato_saldo: null, ...x.tracciaModifica() };
+      const finale: Pds = { ...p, saldato: false, data_saldo: null, totale_pagato_saldo: null, economia_importo: null, economia_note: null, ...x.tracciaModifica() };
       x.dati = { ...x.dati, pds: sostituisci(x.dati.pds, finale) };
       x.registra('pds', p.id, p.id, 'modifica', rif, differenze(p, finale, CAMPI_SALDO));
+      // il pagamento a saldo torna un pagamento ordinario
+      x.dati = {
+        ...x.dati,
+        pagamenti: x.dati.pagamenti.map((k) => {
+          if (k.pds_id !== p.id || !k.saldo) return k;
+          x.registra('pagamento', k.id, p.id, 'modifica', `PdS ${rif}`, { saldo: { da: true, a: false } });
+          return { ...k, saldo: false, ...x.tracciaModifica() };
+        }),
+      };
       return { id: p.id };
     }
 

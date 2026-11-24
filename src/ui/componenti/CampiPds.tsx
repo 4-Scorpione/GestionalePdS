@@ -1,13 +1,14 @@
-import { Autocomplete, Select, SimpleGrid, TagsInput, TextInput } from '@mantine/core';
+import { Autocomplete, Checkbox, Select, SimpleGrid, Stack, TagsInput, TextInput } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { attiDiAccordo, etichettaAtto } from '../../domain/accordi';
 import { elencoIdv, eserciziDisponibili, etichettaCapitolo, idvDaElenco, idvPerCodice } from '../../domain/calcoli';
 import { formattaEuro } from '../../domain/importi';
 import { annoDi } from '../../domain/date';
 import { puo } from '../../domain/permessi';
-import type { AreaPermesso, ID } from '../../domain/tipi';
+import type { AreaPermesso, Centesimi, ID } from '../../domain/tipi';
 import { useOggi } from '../../stato/derivati';
 import { useApp } from '../../stato/store';
+import { CampoImporto } from './campi';
 
 /** Valori dei dati identificativi del PdS, condivisi fra creazione e modifica. */
 export interface ValoriIdentificativi {
@@ -118,11 +119,10 @@ export function CampiIdentificativiPds({
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
       <TextInput
         label="Numero del progetto di spesa"
-        description={`Comparirà come ${valori.numero.trim() || '…'}/${annoAttivo}`}
+        description={valori.numero.trim() ? `Comparirà come ${valori.numero.trim()}/${annoAttivo}` : `Facoltativo: senza numero comparirà come s.n./${annoAttivo}`}
         value={valori.numero}
         onChange={(e) => imposta('numero', e.currentTarget.value.replace(/\D/g, ''))}
         inputMode="numeric"
-        required
         maxLength={20}
         data-autofocus={autofocus || undefined}
         classNames={{ input: 'num' }}
@@ -183,5 +183,33 @@ export function CampiIdentificativiPds({
       />
       <Autocomplete label="Collaboratore o DEC" data={valoriDec} value={valori.dec ?? ''} onChange={(x) => imposta('dec', x || null)} maxLength={100} comboboxProps={{ withinPortal: true }} />
     </SimpleGrid>
+  );
+}
+
+/**
+ * Attività incentivabile (PdS e atti di adesione): la quota per incentivi è
+ * compresa nel valore, ne impegna una parte e non si paga alla ditta.
+ */
+export function CampiIncentivi({
+  attivo,
+  importo,
+  setAttivo,
+  setImporto,
+}: {
+  attivo: boolean;
+  importo: Centesimi | null;
+  setAttivo: (valore: boolean) => void;
+  setImporto: (valore: Centesimi | null) => void;
+}) {
+  return (
+    <Stack gap="xs">
+      <Checkbox
+        label="Attività incentivabile"
+        description="Una parte del valore è stanziata per gli incentivi: resta impegnata ma non si paga con i pagamenti alla ditta"
+        checked={attivo}
+        onChange={(e) => setAttivo(e.currentTarget.checked)}
+      />
+      {attivo && <CampoImporto label="Importo per incentivi" description="Compreso nel valore complessivo" value={importo} onChange={setImporto} maw={280} />}
+    </Stack>
   );
 }

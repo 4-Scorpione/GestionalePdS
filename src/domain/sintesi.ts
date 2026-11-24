@@ -10,8 +10,13 @@ import type { Capitolo, Centesimi } from './tipi';
  *   gli importi dei PdS inviati ma non ancora stipulati sono riportati a parte
  *   ("tra parentesi"). Un PdS scaduto resta conteggiato tra gli stipulati.
  * - Effettivo pagato: somma di tutti i pagamenti registrati.
- * - Economie: somma di (stipulato − pagato a saldo) sui PdS saldati; non sono
- *   esposte come voce a sé ma rientrano nel disponibile da impegnare.
+ * - Incentivi stanziati: quota del valore dei PdS impegnati (trasmessi o
+ *   stipulati) riservata agli incentivi. Resta nell'impegnato ma non si paga con
+ *   i pagamenti alla ditta: è riportata a parte, accanto al pagato, e non entra
+ *   nel residuo da pagare.
+ * - Economie: somma delle economie dei PdS saldati (calcolate come stipulato −
+ *   incentivi − pagato a saldo, o corrette dall'utente); non sono esposte come
+ *   voce a sé ma rientrano nel disponibile da impegnare.
  */
 export interface ValoriSintesi {
   finanziato: Centesimi;
@@ -20,8 +25,12 @@ export interface ValoriSintesi {
   /** Importi inviati relativi a PdS non ancora stipulati. */
   inviatoNonStipulato: Centesimi;
   pagato: Centesimi;
+  /** Quota impegnata per incentivi, non pagata con i pagamenti alla ditta. */
+  incentivi: Centesimi;
+  /** PdS impegnati con attività incentivabile. */
+  nIncentivabili: number;
   economie: Centesimi;
-  /** Quanto resta da pagare sui PdS stipulati e non ancora saldati. */
+  /** Quanto resta da pagare alla ditta sui PdS stipulati e non ancora saldati (incentivi esclusi). */
   residuoDaPagare: Centesimi;
   /** Finanziato non ancora impegnato con stipula (negativo in caso di sforamento). */
   disponibileSuStipulato: Centesimi;
@@ -76,6 +85,8 @@ export function valoriCapitolo(finanziato: Centesimi, elenco: PdsVista[]): Valor
   let stipulato = 0;
   let inviatoNonStipulato = 0;
   let pagato = 0;
+  let incentivi = 0;
+  let nIncentivabili = 0;
   let economie = 0;
   let residuoDaPagare = 0;
   let nInPreparazione = 0;
@@ -88,13 +99,17 @@ export function valoriCapitolo(finanziato: Centesimi, elenco: PdsVista[]): Valor
     if (invioAvvenuto(p)) {
       nInviati++;
       inviato += p.importo_inviato ?? 0;
+      if (v.incentivi > 0) {
+        nIncentivabili++;
+        incentivi += v.incentivi;
+      }
     } else {
       nInPreparazione++;
     }
     if (stipulaAvvenuta(p)) {
       nStipulati++;
       stipulato += p.valore_stipula ?? 0;
-      if (!p.saldato) residuoDaPagare += Math.max(0, (p.valore_stipula ?? 0) - v.totalePagato);
+      if (!p.saldato) residuoDaPagare += Math.max(0, (p.valore_stipula ?? 0) - v.incentivi - v.totalePagato);
     } else if (invioAvvenuto(p)) {
       inviatoNonStipulato += p.importo_inviato ?? 0;
     }
@@ -109,6 +124,8 @@ export function valoriCapitolo(finanziato: Centesimi, elenco: PdsVista[]): Valor
     stipulato,
     inviatoNonStipulato,
     pagato,
+    incentivi,
+    nIncentivabili,
     economie,
     residuoDaPagare,
     nPds: elenco.length,
@@ -156,6 +173,8 @@ export function calcolaSintesi(capitoli: Capitolo[], viste: PdsVista[]): Sintesi
     stipulato: somma('stipulato'),
     inviatoNonStipulato: somma('inviatoNonStipulato'),
     pagato: somma('pagato'),
+    incentivi: somma('incentivi'),
+    nIncentivabili: somma('nIncentivabili'),
     economie: somma('economie'),
     residuoDaPagare: somma('residuoDaPagare'),
     nPds: somma('nPds'),

@@ -499,6 +499,7 @@ export function Capitoli() {
     { chiave: 'inviato', titolo: 'Impegnato (Trasmesso)', allinea: 'right', ordina: (r) => r.inviato, render: (r) => <Importo valore={r.inviato} /> },
     { chiave: 'stipulato', titolo: 'Impegnato (Stipulato)', allinea: 'right', ordina: (r) => r.stipulato, render: (r) => <Importo valore={r.stipulato} /> },
     { chiave: 'pagato', titolo: 'Pagato', allinea: 'right', ordina: (r) => r.pagato, render: (r) => <Importo valore={r.pagato} /> },
+    { chiave: 'incentivi', titolo: 'Incentivi stanziati', allinea: 'right', ordina: (r) => r.incentivi, render: (r) => <Importo valore={r.incentivi || null} /> },
     {
       chiave: 'azioni',
       titolo: '',
@@ -591,7 +592,7 @@ export function Capitoli() {
           colonne={colonne}
           chiaveRiga={(r) => r.capitolo.id}
           classeRiga={(r) => (sforamentoDaSegnalare(r) ? 'riga-scaduto' : undefined)}
-          larghezzaMinima={980}
+          larghezzaMinima={1100}
           paginazione={false}
           scheda={(r) => (
             <Stack gap={4}>
@@ -628,6 +629,7 @@ export function Capitoli() {
               </Text>
               <Text fz="xs" c="dimmed">
                 Impegnato (Trasmesso) {formattaEuro(r.inviato)} · Impegnato (Stipulato) {formattaEuro(r.stipulato)} · Pagato {formattaEuro(r.pagato)}
+                {r.incentivi > 0 ? ` · Incentivi ${formattaEuro(r.incentivi)}` : ''}
                 {sforamentoDaSegnalare(r) ? ' · ⚠ superamento del finanziato' : ''}
               </Text>
             </Stack>

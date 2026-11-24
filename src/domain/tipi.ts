@@ -107,12 +107,19 @@ export interface AttoAdesione extends Tracciamento {
   accordo_id: ID;
   numero: string;
   oggetto: string | null;
+  // Invio (assente nei dati precedenti): come per i PdS, l'atto prima si invia e poi si stipula
+  importo_inviato?: Centesimi | null;
+  protocollo_invio?: string | null;
+  data_invio?: DataISO | null;
   protocollo_stipula: string | null;
   data_stipula: DataISO | null;
   /** Durata in giorni dalla stipula (predefinita: 365). */
   durata_giorni: number;
-  /** Valore stipulato: è la quota di capienza dell'AQ impegnata dall'atto. */
+  /** Valore stipulato (0 finché non è stipulato): con l'importo inviato determina la capienza dell'AQ impegnata. */
   valore: Centesimi;
+  /** Attività incentivabile: quota del valore stanziata per gli incentivi. */
+  incentivabile?: boolean;
+  importo_incentivi?: Centesimi | null;
   note: string | null;
 }
 
@@ -120,7 +127,7 @@ export interface AttoAdesione extends Tracciamento {
 export interface Pds extends Tracciamento {
   id: ID;
   // 5.1 Dati identificativi
-  /** Numero progressivo inserito dall'utente (es. "18"); l'anno viene aggiunto dall'esercizio del capitolo. */
+  /** Numero progressivo inserito dall'utente (es. "18"); l'anno viene aggiunto dall'esercizio del capitolo. Vuoto se l'attività non ha numero di PdS. */
   numero: string;
   capitolo_id: ID;
   /** Accordo quadro di riferimento (facoltativo). */
@@ -139,10 +146,24 @@ export interface Pds extends Tracciamento {
   importo_inviato: Centesimi | null;
   protocollo_invio: string | null;
   data_invio: DataISO | null;
-  // 5.3 Stipula
+  // 5.3 Stipula. I campi facoltativi da qui in avanti sono assenti nei dati precedenti.
+  /** PdS con Determina a Contrarre: abilita DAC e atto dispositivo, che precedono la stipula. */
+  dac?: boolean;
+  protocollo_dac?: string | null;
+  data_dac?: DataISO | null;
+  /** Atto dispositivo: un'unica voce di testo. */
+  atto_dispositivo?: string | null;
   protocollo_stipula: string | null;
   data_stipula: DataISO | null;
   valore_stipula: Centesimi | null;
+  /** Codice Identificativo Gara: si inserisce con la stipula o dopo. */
+  cig?: string | null;
+  /**
+   * Attività incentivabile: quota del valore del PdS stanziata per gli incentivi.
+   * Resta compresa nell'impegno del capitolo ma non si paga con i pagamenti alla ditta.
+   */
+  incentivabile?: boolean;
+  importo_incentivi?: Centesimi | null;
   // 5.4 Tempi di esecuzione
   modalita_termine: ModalitaTermine | null;
   durata: number | null;
@@ -154,6 +175,9 @@ export interface Pds extends Tracciamento {
   data_saldo: DataISO | null;
   /** Valore complessivo finale pagato, registrato alla conferma del saldo. */
   totale_pagato_saldo: Centesimi | null;
+  /** Economia corretta dall'utente dopo il saldo; null = calcolata (stipulato − incentivi − pagato a saldo). */
+  economia_importo?: Centesimi | null;
+  economia_note?: string | null;
   // 5.6 Note
   note: string | null;
   // 5.10 Eliminazione logica: i PdS eliminati restano visibili al solo amministratore
@@ -170,6 +194,14 @@ export interface Pagamento extends Tracciamento {
   /** Numero puro del protocollo del pagamento (mostrato come "Prot. n. … del …"). */
   riferimento: string | null;
   note: string | null;
+  // Campi facoltativi, assenti nei dati precedenti
+  fattura?: string | null;
+  /** Pagamento a saldo: l'ultimo del PdS, ne conferma il saldo. */
+  saldo?: boolean;
+  // Dati del titolo di spesa, per i soli PdS con DAC
+  codice_titolo?: string | null;
+  codice_memoriale?: string | null;
+  data_titolo?: DataISO | null;
 }
 
 export type TipoAllegato = 'protocollo_invio' | 'protocollo_stipula' | 'fattura' | 'altro';

@@ -44,8 +44,9 @@ si leggono nella **Sintesi finanziaria**.
 
 ## Progetti di spesa
 
-**Nuovo PdS** richiede numero e capitolo (che determina l'esercizio); il resto si completa nel tempo dalla scheda del PdS,
-dove ogni sezione ha il proprio pulsante **Modifica**.
+**Nuovo PdS** richiede solo il capitolo (che determina l'esercizio); tutti gli altri dati sono facoltativi e si completano nel tempo
+dalla scheda del PdS, dove ogni sezione ha il proprio pulsante **Modifica**. Se mancano il numero o i dati di invio (importo, protocollo,
+data) compare un avviso: con **Crea comunque** si prosegue. Le attività senza numero di PdS compaiono come `s.n./2026`.
 
 Numero ed **esercizio finanziario** si inseriscono separatamente: si digita `18`, si sceglie l'esercizio `2026` (che determina i capitoli
 selezionabili) e il PdS compare ovunque come `18/2026`.
@@ -56,11 +57,19 @@ nelle schermate compaiono come «Prot. n. 0089567 del 15/01/2026».
 - **Dati identificativi**: ditta, **accordo quadro** ed eventuale **atto di adesione**, ordinativo, **IDV** (un PdS può essere collegato a più IDV: si digita un codice e si preme Invio) e collaboratore/DEC.
 
 - **Invio del progetto**: importo, protocollo e data. Il PdS risulta *inviato* quando c'è la data di invio.
-- **Stipula**: protocollo, data e valore (può differire dall'importo inviato). La stipula risulta *avvenuta* quando c'è la data.
+- **Stipula**: protocollo, data, valore (può differire dall'importo inviato) e **CIG**, che si inserisce con la stipula o dopo.
+  La stipula risulta *avvenuta* quando c'è la data. Alcuni PdS arrivano direttamente con la stipula; per gli altri arriva prima la
+  DAC (Determina a Contrarre), si produce l'atto dispositivo e poi si stipula. La casella **«PdS con Determina a Contrarre»** abilita
+  protocollo e data della **DAC** e la voce **Atto dispositivo** e, nei pagamenti, codice titolo, codice memoriale e data titolo.
+- **Attività incentivabile**: la casella abilita l'**importo per incentivi**, una parte del valore del PdS (il valore complessivo non
+  cambia). Questa quota impegna il capitolo come il resto del PdS, ma non si paga con i pagamenti alla ditta: è esclusa dal residuo da
+  pagare e riportata a parte nella sintesi. Si può correggere in qualunque momento, per esempio dopo il pagamento effettivo.
 - **Tempi di esecuzione**: *durata* in giorni o mesi dalla stipula (la scadenza si calcola da sola) oppure *data fissa*.
-- **Pagamenti e saldo**: si registrano i pagamenti man mano, ognuno con il numero di protocollo e la data; con **Conferma saldo** si chiude il PdS, eventualmente inserendo
-  l'ultimo pagamento: il sistema registra il totale pagato e calcola l'**economia** (valore di stipula − totale pagato).
-  Per correggere un pagamento dopo il saldo usare **Annulla saldo**.
+- **Pagamenti e saldo**: per ogni pagamento si registrano fattura, protocollo, importo e data (e i dati del titolo, se c'è la DAC).
+  L'ultimo pagamento si segna come **Pagamento a saldo**: il PdS risulta saldato, il sistema registra il totale pagato e calcola
+  l'**economia** (valore di stipula − incentivi − totale pagato). Dopo il saldo l'economia si può **correggere** e motivare con delle
+  note (matita accanto all'importo); «Torna al valore calcolato» annulla la correzione. **Conferma saldo** chiude il PdS senza un
+  nuovo pagamento (ultimo pagamento già registrato o PdS non eseguito). Per correggere un pagamento dopo il saldo usare **Annulla saldo**.
 - **Note** e **Allegati** (collegamenti a documenti, ad esempio nel sistema di protocollo, o file).
 - **Storico modifiche**: chi ha cambiato cosa e quando (solo amministratore).
 
@@ -90,9 +99,11 @@ impegnato e quanto resta ordinabile. Ogni AQ ha stipula (protocollo e data), dur
 
 Aprendo un accordo quadro si vedono:
 
-- gli **atti di adesione a quantità indeterminata**: hanno una propria stipula e una durata (predefinita 365 giorni) e impegnano la
-  capienza dell'AQ **senza** impegnare fondi sui capitoli di spesa. Per ognuno si leggono valore stipulato, ordinato, residuo e pagato,
-  con l'elenco dei PdS emessi sull'atto;
+- gli **atti di adesione a quantità indeterminata**: come i PdS si **inviano** (importo, protocollo e data) e poi si **stipulano**
+  (valore, protocollo e data), con una durata (predefinita 365 giorni). Impegnano la capienza dell'AQ **senza** impegnare fondi sui
+  capitoli di spesa: prima della stipula con l'importo inviato, poi con il valore stipulato. Possono essere **attività incentivabili**:
+  la quota per incentivi compare nella situazione dell'impegno dell'AQ. Per ognuno si leggono valore, ordinato, residuo e pagato, con
+  l'elenco dei PdS emessi sull'atto;
 - gli **atti di adesione a quantità determinata**: sono semplicemente i PdS collegati direttamente all'accordo quadro; si inseriscono
   dalla creazione del PdS e impegnano sia la capienza dell'AQ sia i fondi del capitolo;
 - **tutti gli ordinativi** dell'accordo quadro, con impegnato e pagato.
@@ -120,6 +131,8 @@ Per ogni capitolo dell'esercizio scelto: totale finanziato, **Impegnato (Trasmes
 (tra parentesi gli importi trasmessi non ancora stipulati), pagato, **disponibile da impegnare** e residuo da pagare, con le percentuali.
 Il disponibile da impegnare è il finanziato meno lo stipulato, più le **economie** dei PdS saldati: le economie tornano quindi
 utilizzabili sul capitolo.
+Gli **incentivi stanziati** (quota per incentivi dei PdS trasmessi o stipulati) restano nell'impegnato ma sono una voce a parte
+rispetto al pagato: il residuo da pagare li esclude e l'export Excel ne riporta il resoconto nel foglio «Incentivi».
 Il grafico confronta i valori per capitolo: la linea verticale indica il livello del finanziato.
 L'icona ⚠ e il riquadro rosso segnalano i capitoli in cui l'impegnato supera il finanziato (situazione consentita ma da verificare),
 salvo quelli per cui l'amministratore ha autorizzato il superamento.

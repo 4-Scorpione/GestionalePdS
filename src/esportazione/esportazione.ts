@@ -52,9 +52,16 @@ export const COLONNE_PDS: ColonnaEsportazione<PdsVista>[] = [
   { titolo: 'Importo trasmesso', tipo: 'importo', larghezza: 16, valore: (v) => euro(v.pds.importo_inviato) },
   { titolo: 'Protocollo invio', tipo: 'testo', larghezza: 18, valore: (v) => v.pds.protocollo_invio },
   { titolo: 'Data invio', tipo: 'data', larghezza: 12, valore: (v) => v.pds.data_invio },
+  { titolo: 'DAC', tipo: 'testo', larghezza: 6, valore: (v) => (v.pds.dac ? 'Sì' : 'No') },
+  { titolo: 'Protocollo DAC', tipo: 'testo', larghezza: 16, valore: (v) => v.pds.protocollo_dac ?? null },
+  { titolo: 'Data DAC', tipo: 'data', larghezza: 12, valore: (v) => v.pds.data_dac ?? null },
+  { titolo: 'Atto dispositivo', tipo: 'testo', larghezza: 20, valore: (v) => v.pds.atto_dispositivo ?? null },
   { titolo: 'Protocollo stipula', tipo: 'testo', larghezza: 18, valore: (v) => v.pds.protocollo_stipula },
   { titolo: 'Data stipula', tipo: 'data', larghezza: 12, valore: (v) => v.pds.data_stipula },
   { titolo: 'Valore stipula', tipo: 'importo', larghezza: 16, valore: (v) => euro(v.pds.valore_stipula) },
+  { titolo: 'CIG', tipo: 'testo', larghezza: 14, valore: (v) => v.pds.cig ?? null },
+  { titolo: 'Attività incentivabile', tipo: 'testo', larghezza: 10, valore: (v) => (v.pds.incentivabile ? 'Sì' : 'No') },
+  { titolo: 'Incentivi', tipo: 'importo', larghezza: 14, valore: (v) => (v.pds.incentivabile ? euro(v.incentivi) : null) },
   {
     titolo: 'Termine di esecuzione',
     tipo: 'testo',
@@ -74,6 +81,7 @@ export const COLONNE_PDS: ColonnaEsportazione<PdsVista>[] = [
   { titolo: 'Data saldo', tipo: 'data', larghezza: 12, valore: (v) => v.pds.data_saldo },
   { titolo: 'Totale pagato a saldo', tipo: 'importo', larghezza: 16, valore: (v) => euro(v.pds.totale_pagato_saldo) },
   { titolo: 'Economia', tipo: 'importo', larghezza: 14, valore: (v) => euro(v.economia) },
+  { titolo: 'Note economia', tipo: 'testo', larghezza: 30, valore: (v) => v.pds.economia_note ?? null },
   { titolo: 'Note', tipo: 'testo', larghezza: 40, valore: (v) => v.pds.note },
 ];
 
@@ -92,6 +100,7 @@ export function colonneSintesi(): ColonnaEsportazione<RigaSintesiEsportata>[] {
     { titolo: 'Effettivo pagato', tipo: 'importo', larghezza: 17, valore: (r) => euro(r.pagato) },
     { titolo: '% pagato su finanziato', tipo: 'percentuale', larghezza: 11, valore: (r) => r.percPagato },
     { titolo: '% pagato su stipulato', tipo: 'percentuale', larghezza: 11, valore: (r) => r.percPagatoSuStipulato },
+    { titolo: 'Incentivi stanziati', tipo: 'importo', larghezza: 15, valore: (r) => euro(r.incentivi) },
     { titolo: 'Economie', tipo: 'importo', larghezza: 14, valore: (r) => euro(r.economie) },
     { titolo: 'Disponibile da impegnare', tipo: 'importo', larghezza: 17, valore: (r) => euro(r.disponibileDaImpegnare) },
     { titolo: 'Residuo da pagare', tipo: 'importo', larghezza: 17, valore: (r) => euro(r.residuoDaPagare) },

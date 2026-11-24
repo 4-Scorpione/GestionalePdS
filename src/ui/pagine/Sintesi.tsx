@@ -76,6 +76,14 @@ function CelleValori({ v, forte = false }: { v: ValoriSintesi; forte?: boolean }
         )}
       </Table.Td>
       <Table.Td ta="right">
+        <Importo valore={v.incentivi || null} forte={forte} />
+        {v.nIncentivabili > 0 && (
+          <Text fz="xs" c="dimmed" className="num">
+            {v.nIncentivabili} PdS
+          </Text>
+        )}
+      </Table.Td>
+      <Table.Td ta="right">
         <Importo valore={v.disponibileDaImpegnare} forte={forte} c={v.disponibileDaImpegnare < 0 ? 'red.7' : undefined} />
       </Table.Td>
       <Table.Td ta="right">
@@ -94,7 +102,7 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
     );
   }
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={720}>
       <Table verticalSpacing={4} fz="sm" withRowBorders={false}>
         <Table.Thead>
           <Table.Tr>
@@ -104,6 +112,7 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
             <Table.Th ta="right">Trasmesso</Table.Th>
             <Table.Th ta="right">Stipulato</Table.Th>
             <Table.Th ta="right">Pagato</Table.Th>
+            <Table.Th ta="right">Incentivi</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -136,6 +145,9 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
                 </Table.Td>
                 <Table.Td ta="right">
                   <Importo valore={v.totalePagato} />
+                </Table.Td>
+                <Table.Td ta="right">
+                  <Importo valore={v.incentivi || null} />
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -200,7 +212,7 @@ export function Sintesi() {
             </Alert>
           )}
 
-          <SimpleGrid cols={{ base: 1, xs: 2, lg: 3 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="md">
             <RiquadroValore etichetta="Totale finanziato" valore={formattaEuro(t.finanziato)} dettaglio={`${sintesi.righe.length} capitoli · ${t.nPds} PdS`} />
             <RiquadroValore
               etichetta="Impegnato (Trasmesso)"
@@ -221,11 +233,16 @@ export function Sintesi() {
               dettaglio={`${formattaPercentuale(t.percPagato)} del finanziato · ${formattaPercentuale(t.percPagatoSuStipulato)} dello stipulato`}
             />
             <RiquadroValore
+              etichetta="Incentivi stanziati"
+              valore={formattaEuro(t.incentivi)}
+              dettaglio={`${t.nIncentivabili} PdS incentivabili · compresi nell'impegnato, non pagati alla ditta`}
+            />
+            <RiquadroValore
               etichetta="Disponibile da impegnare"
               valore={formattaEuro(t.disponibileDaImpegnare)}
               dettaglio={`Finanziato meno stipulato, comprese le economie dei ${t.nSaldati} PdS saldati (${formattaEuro(t.economie)})`}
             />
-            <RiquadroValore etichetta="Residuo da pagare" valore={formattaEuro(t.residuoDaPagare)} dettaglio="Stipulato non ancora pagato sui PdS aperti" />
+            <RiquadroValore etichetta="Residuo da pagare" valore={formattaEuro(t.residuoDaPagare)} dettaglio="Stipulato non ancora pagato sui PdS aperti, incentivi esclusi" />
           </SimpleGrid>
 
           <Card>
@@ -263,6 +280,7 @@ export function Sintesi() {
                         ['Impegnato (Trasmesso)', `${formattaEuro(r.inviato)} (${formattaPercentuale(r.percInviato)})`],
                         ['Impegnato (Stipulato)', `${formattaEuro(r.stipulato)} (${formattaPercentuale(r.percStipulato)})`],
                         ['Pagato', `${formattaEuro(r.pagato)} (${formattaPercentuale(r.percPagato)})`],
+                        ['Incentivi stanziati', formattaEuro(r.incentivi)],
                         ['Disponibile da impegnare', formattaEuro(r.disponibileDaImpegnare)],
                         ['Residuo da pagare', formattaEuro(r.residuoDaPagare)],
                       ].map(([e, v]) => (
@@ -283,7 +301,7 @@ export function Sintesi() {
                 ))}
               </Stack>
             ) : (
-              <Table.ScrollContainer minWidth={1050}>
+              <Table.ScrollContainer minWidth={1170}>
                 <Table verticalSpacing={8} horizontalSpacing="sm" highlightOnHover aria-label="Sintesi finanziaria per capitolo">
                   <Table.Thead>
                     <Table.Tr>
@@ -293,6 +311,7 @@ export function Sintesi() {
                       <Table.Th ta="right">Impegnato (Trasmesso)</Table.Th>
                       <Table.Th ta="right">Impegnato (Stipulato)</Table.Th>
                       <Table.Th ta="right">Effettivo pagato</Table.Th>
+                      <Table.Th ta="right">Incentivi stanziati</Table.Th>
                       <Table.Th ta="right">Disponibile da impegnare</Table.Th>
                       <Table.Th ta="right">Residuo da pagare</Table.Th>
                     </Table.Tr>
@@ -329,7 +348,7 @@ export function Sintesi() {
                           {aperto && (
                             <Table.Tr>
                               <Table.Td />
-                              <Table.Td colSpan={7} bg="var(--mantine-color-default-hover)">
+                              <Table.Td colSpan={8} bg="var(--mantine-color-default-hover)">
                                 <DettaglioPdsCapitolo riga={r} />
                               </Table.Td>
                             </Table.Tr>

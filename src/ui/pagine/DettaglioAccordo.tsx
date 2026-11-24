@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Divider, Group, Modal, NumberInput, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Title, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconArrowLeft, IconFileText, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState, type FormEvent } from 'react';
 import { importoImpegnato, type VistaAccordo, type VistaAtto } from '../../domain/accordi';
@@ -12,6 +12,7 @@ import { useApp } from '../../stato/store';
 import { chiediConferma, useAzione } from '../componenti/azioni';
 import { BadgeStato, Importo, IntestazionePagina, Meter, Protocollo, StatoVuoto } from '../componenti/base';
 import { CampoData, CampoImporto, CampoProtocollo } from '../componenti/campi';
+import { CampiIncentivi } from '../componenti/CampiPds';
 import { RiquadroValore } from '../componenti/RiquadroValore';
 import { href } from '../router';
 import { ModaleAccordo } from './AccordiQuadro';
@@ -20,20 +21,30 @@ import { ModaleAccordo } from './AccordiQuadro';
 function ModaleAtto({ accordoId, atto, onClose }: { accordoId: string; atto: AttoAdesione | null; onClose: () => void }) {
   const [numero, setNumero] = useState(atto?.numero ?? '');
   const [oggetto, setOggetto] = useState(atto?.oggetto ?? '');
+  const [importoInviato, setImportoInviato] = useState<Centesimi | null>(atto?.importo_inviato ?? null);
+  const [protocolloInvio, setProtocolloInvio] = useState<string | null>(atto?.protocollo_invio ?? null);
+  const [dataInvio, setDataInvio] = useState<DataISO | null>(atto?.data_invio ?? null);
   const [protocollo, setProtocollo] = useState<string | null>(atto?.protocollo_stipula ?? null);
   const [dataStipula, setDataStipula] = useState<DataISO | null>(atto?.data_stipula ?? null);
   const [durata, setDurata] = useState<number | ''>(atto?.durata_giorni ?? DURATA_ATTO_PREDEFINITA);
-  const [valore, setValore] = useState<Centesimi | null>(atto?.valore ?? null);
+  const [valore, setValore] = useState<Centesimi | null>(atto?.valore || null);
+  const [incentivabile, setIncentivabile] = useState(atto?.incentivabile === true);
+  const [incentivi, setIncentivi] = useState<Centesimi | null>(atto?.importo_incentivi ?? null);
   const [note, setNote] = useState(atto?.note ?? '');
   const { inCorso, esegui } = useAzione();
 
   const dati = {
     numero: numero.trim(),
     oggetto: oggetto.trim() || null,
+    importo_inviato: importoInviato,
+    protocollo_invio: protocolloInvio,
+    data_invio: dataInvio,
     protocollo_stipula: protocollo,
     data_stipula: dataStipula,
     durata_giorni: durata === '' ? DURATA_ATTO_PREDEFINITA : durata,
     valore: valore ?? 0,
+    incentivabile,
+    importo_incentivi: incentivabile ? incentivi : null,
     note: note.trim() || null,
   };
 
@@ -44,7 +55,8 @@ function ModaleAtto({ accordoId, atto, onClose }: { accordoId: string; atto: Att
         const modifiche: Record<string, unknown> = {};
         const originale: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(dati)) {
-          if (v !== (atto as unknown as Record<string, unknown>)[k]) {
+          // i campi assenti nei dati precedenti valgono null (o false)
+          if (v !== ((atto as unknown as Record<string, unknown>)[k] ?? (typeof v === 'boolean' ? false : null))) {
             modifiche[k] = v;
             originale[k] = (atto as unknown as Record<string, unknown>)[k];
           }
@@ -67,9 +79,16 @@ function ModaleAtto({ accordoId, atto, onClose }: { accordoId: string; atto: Att
           </Text>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <TextInput label="Numero" description="Es. AdA 1" value={numero} onChange={(e) => setNumero(e.currentTarget.value)} required maxLength={50} data-autofocus />
-            <CampoImporto label="Valore stipulato" value={valore} onChange={setValore} />
+            <TextInput label="Oggetto" value={oggetto} onChange={(e) => setOggetto(e.currentTarget.value)} maxLength={300} />
           </SimpleGrid>
-          <TextInput label="Oggetto" value={oggetto} onChange={(e) => setOggetto(e.currentTarget.value)} maxLength={300} />
+          <Divider label="Invio" labelPosition="left" />
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <CampoImporto label="Importo inviato" value={importoInviato} onChange={setImportoInviato} />
+            <CampoProtocollo label="Protocollo di invio" value={protocolloInvio} onChange={setProtocolloInvio} />
+            <CampoData label="Data di invio" value={dataInvio} onChange={setDataInvio} />
+          </SimpleGrid>
+          <Divider label="Stipula" labelPosition="left" />
+          <CampoImporto label="Valore stipulato" description="Finché manca, la capienza dell'AQ è impegnata dall'importo inviato" value={valore} onChange={setValore} maw={320} />
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             <CampoProtocollo label="Protocollo di stipula" value={protocollo} onChange={setProtocollo} />
             <CampoData label="Data di stipula" value={dataStipula} onChange={setDataStipula} />
@@ -84,12 +103,13 @@ function ModaleAtto({ accordoId, atto, onClose }: { accordoId: string; atto: Att
               allowNegative={false}
             />
           </SimpleGrid>
+          <CampiIncentivi attivo={incentivabile} importo={incentivi} setAttivo={setIncentivabile} setImporto={setIncentivi} />
           <Textarea label="Note" value={note} onChange={(e) => setNote(e.currentTarget.value)} autosize minRows={2} maxRows={8} maxLength={5000} />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>
               Annulla
             </Button>
-            <Button type="submit" loading={inCorso} disabled={!numero.trim() || !valore}>
+            <Button type="submit" loading={inCorso} disabled={!numero.trim()}>
               Salva
             </Button>
           </Group>
@@ -174,6 +194,10 @@ function SchedaAtto({ v, puoGestire, onModifica, onElimina }: { v: VistaAtto; pu
             </Text>
           )}
           <Text fz="xs" c="dimmed" mt={4}>
+            Invio: <Protocollo numero={v.atto.protocollo_invio} data={v.atto.data_invio} />
+            {v.atto.importo_inviato != null ? ` · ${formattaEuro(v.atto.importo_inviato)}` : ''}
+          </Text>
+          <Text fz="xs" c="dimmed">
             Stipula: <Protocollo numero={v.atto.protocollo_stipula} data={v.atto.data_stipula} /> · durata {v.atto.durata_giorni} giorni
             {v.scadenza ? ` · scadenza ${formattaData(v.scadenza)}` : ''}
           </Text>
@@ -192,7 +216,7 @@ function SchedaAtto({ v, puoGestire, onModifica, onElimina }: { v: VistaAtto; pu
 
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" mb="sm">
         {[
-          ['Valore stipulato', formattaEuro(v.atto.valore)],
+          v.atto.valore ? ['Valore stipulato', formattaEuro(v.atto.valore)] : ['Importo inviato (non stipulato)', formattaEuro(v.valore)],
           ['Ordinato', formattaEuro(v.impegnato)],
           ['Residuo ordinabile', formattaEuro(v.residuo)],
           ['Pagato', formattaEuro(v.pagato)],
@@ -209,7 +233,8 @@ function SchedaAtto({ v, puoGestire, onModifica, onElimina }: { v: VistaAtto; pu
       </SimpleGrid>
       <Meter rapporto={v.quotaImpegnata} etichetta={`Quota ordinata dell'atto ${v.atto.numero}`} />
       <Text fz="xs" c="dimmed" mt={4} mb="sm">
-        {formattaPercentuale(v.quotaImpegnata)} del valore stipulato · {v.pds.length} ordinativi
+        {formattaPercentuale(v.quotaImpegnata)} del valore {v.atto.valore ? 'stipulato' : 'inviato'} · {v.pds.length} ordinativi
+        {v.atto.incentivabile ? ` · di cui incentivi ${formattaEuro(v.atto.importo_incentivi)}` : ''}
       </Text>
       <TabellaOrdinativi pds={v.pds} vuoto="Nessun PdS collegato a questo atto di adesione." />
     </Card>
@@ -307,6 +332,12 @@ export function DettaglioAccordo({ parametri }: { parametri: Record<string, stri
               Atti di adesione {formattaEuro(v.impegnatoAtti)}
               <br />
               Ordinativi diretti {formattaEuro(v.impegnatoDiretto)}
+              {v.incentivi > 0 && (
+                <>
+                  <br />
+                  di cui incentivi {formattaEuro(v.incentivi)}
+                </>
+              )}
             </>
           }
         />

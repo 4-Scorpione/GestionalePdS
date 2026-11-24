@@ -16,7 +16,7 @@ import { StoricoModifiche } from '../componenti/StoricoModifiche';
 import { href, naviga } from '../router';
 import { SezioneAllegati } from './pds/SezioneAllegati';
 import { SezionePagamenti } from './pds/SezionePagamenti';
-import { SezioneIdentificativi, SezioneInvio, SezioneNote, SezioneStipula, SezioneTempi } from './pds/SezioniDati';
+import { SezioneIdentificativi, SezioneIncentivi, SezioneInvio, SezioneNote, SezioneStipula, SezioneTempi } from './pds/SezioniDati';
 
 export function DettaglioPds({ parametri }: { parametri: Record<string, string> }) {
   const { vistePerId, indici } = useDerivati();
@@ -158,7 +158,7 @@ export function DettaglioPds({ parametri }: { parametri: Record<string, string> 
             p.saldato
               ? `Saldato il ${formattaData(p.data_saldo)} · economia ${formattaEuro(vista.economia)}`
               : vista.quotaPagata != null
-                ? `${formattaPercentuale(vista.quotaPagata)} del valore stipulato · ${vista.pagamenti.length} pagamenti`
+                ? `${formattaPercentuale(vista.quotaPagata)} del valore stipulato${vista.incentivi > 0 ? ' al netto degli incentivi' : ''} · ${vista.pagamenti.length} pagamenti`
                 : `${vista.pagamenti.length} pagamenti`
           }
         />
@@ -191,6 +191,7 @@ export function DettaglioPds({ parametri }: { parametri: Record<string, string> 
         <SezioneIdentificativi vista={vista} />
         <SezioneInvio vista={vista} />
         <SezioneStipula vista={vista} />
+        <SezioneIncentivi vista={vista} />
         <SezioneTempi vista={vista} />
         <SezionePagamenti vista={vista} />
         <SezioneNote vista={vista} />

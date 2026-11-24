@@ -44,6 +44,7 @@ test.describe('backend GitHub (emulato)', () => {
     await scegli(page, modale.getByRole('combobox', { name: 'Capitolo di spesa' }), /4455/);
     await modale.getByLabel('Importo del PdS inviato').fill('1500');
     await modale.getByRole('button', { name: 'Crea PdS' }).click();
+    await page.getByRole('button', { name: 'Crea comunque' }).click();
     await expect(page.getByRole('heading', { name: /PdS 7\/2026/ })).toBeVisible();
 
     // i dati sono nel repository privato, con importi in centesimi

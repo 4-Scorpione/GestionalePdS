@@ -143,6 +143,12 @@ describe('rapporti esportabili', () => {
     expect(foglioAccordi.colonne[11].titolo).toBe('Impegnato totale');
     expect(foglioAccordi.colonne[11].valore(foglioAccordi.righe[0] as never)).toBe(380_000);
   });
+
+  it('la sintesi riporta a parte il resoconto degli incentivi', () => {
+    const r = rapportoSintesi(sintesi, 2026);
+    expect(r.fogli.map((f) => f.nome)).toEqual(['Sintesi per capitolo', 'PdS', 'Incentivi']);
+    expect(r.fogli[0].colonne.map((c) => c.titolo)).toContain('Incentivi stanziati');
+  });
 });
 
 describe('grafici nei file Excel', () => {

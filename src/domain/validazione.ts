@@ -157,12 +157,18 @@ export function validaDatiAtto(d: Partial<DatiAtto>, parziale = false): Partial<
   const considera = (campo: keyof DatiAtto) => !parziale || ha(d, campo);
   if (considera('numero')) out.numero = testo(errori, 'numero', 'Numero atto di adesione', d.numero, { obbligatorio: true, max: 50 }) ?? '';
   if (considera('oggetto')) out.oggetto = testo(errori, 'oggetto', 'Oggetto', d.oggetto ?? null, { max: LIMITI.testoMedio });
+  if (considera('importo_inviato')) out.importo_inviato = importo(errori, 'importo_inviato', 'Importo inviato', d.importo_inviato ?? null);
+  if (considera('protocollo_invio')) out.protocollo_invio = protocollo(errori, 'protocollo_invio', 'Protocollo di invio', d.protocollo_invio ?? null);
+  if (considera('data_invio')) out.data_invio = data(errori, 'data_invio', 'Data di invio', d.data_invio ?? null);
   if (considera('protocollo_stipula')) out.protocollo_stipula = protocollo(errori, 'protocollo_stipula', 'Protocollo di stipula', d.protocollo_stipula ?? null);
   if (considera('data_stipula')) out.data_stipula = data(errori, 'data_stipula', 'Data di stipula', d.data_stipula ?? null);
   if (considera('durata_giorni')) {
     out.durata_giorni = intero(errori, 'durata_giorni', 'Durata (giorni)', d.durata_giorni ?? null, { max: LIMITI.durataGiorniMax, obbligatorio: true }) ?? 0;
   }
-  if (considera('valore')) out.valore = importo(errori, 'valore', 'Valore stipulato', d.valore ?? 0, { obbligatorio: true, positivo: true }) ?? 0;
+  // il valore stipulato si conosce solo alla stipula: fino ad allora vale 0
+  if (considera('valore')) out.valore = importo(errori, 'valore', 'Valore stipulato', d.valore ?? 0) ?? 0;
+  if (considera('incentivabile')) out.incentivabile = d.incentivabile === true;
+  if (considera('importo_incentivi')) out.importo_incentivi = importo(errori, 'importo_incentivi', 'Importo per incentivi', d.importo_incentivi ?? null);
   if (considera('note')) out.note = testo(errori, 'note', 'Note', d.note ?? null, { max: LIMITI.note });
   fallisci(errori);
   return out;
@@ -221,6 +227,8 @@ const CAMPI_TESTO_PDS: { campo: keyof DatiPds; etichetta: string; max: number }[
   // un PdS può essere collegato a più IDV: il campo contiene i codici separati da virgola
   { campo: 'idv', etichetta: 'IDV', max: LIMITI.testoMedio },
   { campo: 'dec', etichetta: 'Collaboratore/DEC', max: LIMITI.testoBreve },
+  { campo: 'cig', etichetta: 'CIG', max: 20 },
+  { campo: 'atto_dispositivo', etichetta: 'Atto dispositivo', max: LIMITI.testoBreve },
 ];
 
 export function validaDatiPds(d: Partial<DatiPds>, parziale = false): Partial<DatiPds> {
@@ -229,7 +237,8 @@ export function validaDatiPds(d: Partial<DatiPds>, parziale = false): Partial<Da
   const considera = (campo: keyof DatiPds) => !parziale || ha(d, campo);
 
   if (considera('numero')) {
-    const n = testo(errori, 'numero', 'Numero PdS', d.numero, { obbligatorio: true, max: 20 });
+    // facoltativo: alcune attività non hanno un numero di PdS
+    const n = testo(errori, 'numero', 'Numero PdS', d.numero ?? null, { max: 20 });
     if (n != null && !/^\d{1,20}$/.test(n)) {
       errori.numero = "Numero PdS: indicare solo il numero (l'anno dell'esercizio viene aggiunto automaticamente)";
     }
@@ -246,6 +255,11 @@ export function validaDatiPds(d: Partial<DatiPds>, parziale = false): Partial<Da
   if (considera('atto_adesione_id')) out.atto_adesione_id = riferimento(errori, 'atto_adesione_id', 'Atto di adesione', d.atto_adesione_id ?? null);
   if (considera('protocollo_invio')) out.protocollo_invio = protocollo(errori, 'protocollo_invio', 'Protocollo di invio', d.protocollo_invio ?? null);
   if (considera('protocollo_stipula')) out.protocollo_stipula = protocollo(errori, 'protocollo_stipula', 'Protocollo di stipula', d.protocollo_stipula ?? null);
+  if (considera('protocollo_dac')) out.protocollo_dac = protocollo(errori, 'protocollo_dac', 'Protocollo della DAC', d.protocollo_dac ?? null);
+  if (considera('data_dac')) out.data_dac = data(errori, 'data_dac', 'Data della DAC', d.data_dac ?? null);
+  if (considera('dac')) out.dac = d.dac === true;
+  if (considera('incentivabile')) out.incentivabile = d.incentivabile === true;
+  if (considera('importo_incentivi')) out.importo_incentivi = importo(errori, 'importo_incentivi', 'Importo per incentivi', d.importo_incentivi ?? null);
   if (considera('note')) out.note = testo(errori, 'note', 'Note', d.note ?? null, { max: LIMITI.note });
   if (considera('importo_inviato')) out.importo_inviato = importo(errori, 'importo_inviato', 'Importo inviato', d.importo_inviato ?? null);
   if (considera('valore_stipula')) out.valore_stipula = importo(errori, 'valore_stipula', 'Valore della stipula', d.valore_stipula ?? null);
@@ -296,6 +310,19 @@ export function normalizzaTermine<T extends Pick<Pds, 'modalita_termine' | 'dura
   return r;
 }
 
+type CampiNormalizzati = Pick<
+  Pds,
+  'modalita_termine' | 'durata' | 'durata_unita' | 'data_termine' | 'dac' | 'protocollo_dac' | 'data_dac' | 'atto_dispositivo' | 'incentivabile' | 'importo_incentivi'
+>;
+
+/** Tempi di esecuzione coerenti; senza DAC o senza attività incentivabile i campi collegati si svuotano. */
+export function normalizzaPds<T extends CampiNormalizzati>(p: T): T {
+  const r = normalizzaTermine(p);
+  if (!r.dac) Object.assign(r, { protocollo_dac: null, data_dac: null, atto_dispositivo: null });
+  if (!r.incentivabile) r.importo_incentivi = null;
+  return r;
+}
+
 // ---------------------------------------------------------------------------
 // Pagamenti e allegati
 // ---------------------------------------------------------------------------
@@ -309,6 +336,19 @@ export function validaDatiPagamento(d: Partial<DatiPagamento>, parziale = false)
   }
   if (!parziale || ha(d, 'riferimento')) out.riferimento = protocollo(errori, 'riferimento', 'Protocollo del pagamento', d.riferimento ?? null);
   if (!parziale || ha(d, 'note')) out.note = testo(errori, 'note', 'Note', d.note ?? null, { max: LIMITI.testoMedio });
+  if (!parziale || ha(d, 'fattura')) out.fattura = testo(errori, 'fattura', 'Fattura', d.fattura ?? null, { max: 50 });
+  if (!parziale || ha(d, 'saldo')) out.saldo = d.saldo === true;
+  if (!parziale || ha(d, 'codice_titolo')) out.codice_titolo = testo(errori, 'codice_titolo', 'Codice titolo', d.codice_titolo ?? null, { max: 50 });
+  if (!parziale || ha(d, 'codice_memoriale')) out.codice_memoriale = testo(errori, 'codice_memoriale', 'Codice memoriale', d.codice_memoriale ?? null, { max: 50 });
+  if (!parziale || ha(d, 'data_titolo')) out.data_titolo = data(errori, 'data_titolo', 'Data titolo', d.data_titolo ?? null);
+  fallisci(errori);
+  return out;
+}
+
+/** Economia corretta a mano dopo il saldo (null = torna al valore calcolato). */
+export function validaEconomia(economia: unknown, note: unknown): { economia: Centesimi | null; note: string | null } {
+  const errori: Errori = {};
+  const out = { economia: importo(errori, 'economia', 'Economia', economia ?? null), note: testo(errori, 'note', 'Note', note ?? null, { max: LIMITI.note }) };
   fallisci(errori);
   return out;
 }
@@ -400,7 +440,7 @@ export function avvisiCoerenzaPds(
 ): string[] {
   const avvisi: string[] = [];
   const capitolo = contesto.capitoli.get(p.capitolo_id);
-  if (capitolo) {
+  if (capitolo && p.numero.trim()) {
     const numero = p.numero.trim().toLowerCase();
     const duplicato = contesto.altriPds.some(
       (x) =>
@@ -429,9 +469,14 @@ export function avvisiCoerenzaPds(
   if (p.modalita_termine === 'data' && p.data_termine && p.data_stipula && p.data_termine < p.data_stipula) {
     avvisi.push('Il termine di esecuzione è precedente alla data di stipula.');
   }
+  const incentivi = p.incentivabile ? (p.importo_incentivi ?? 0) : 0;
+  const valore = p.valore_stipula ?? p.importo_inviato;
+  if (incentivi > 0 && valore != null && incentivi > valore) {
+    avvisi.push('Gli incentivi superano il valore del PdS.');
+  }
   const pagato = contesto.pagamenti.reduce((t, x) => t + x.importo, 0);
-  if (p.valore_stipula != null && pagato > p.valore_stipula) {
-    avvisi.push('Il totale dei pagamenti supera il valore della stipula.');
+  if (p.valore_stipula != null && pagato > p.valore_stipula - incentivi) {
+    avvisi.push(incentivi > 0 ? 'Il totale dei pagamenti supera il valore della stipula al netto degli incentivi.' : 'Il totale dei pagamenti supera il valore della stipula.');
   }
   if (p.saldato && p.data_saldo && p.data_stipula && p.data_saldo < p.data_stipula) {
     avvisi.push('La data del saldo è precedente alla data di stipula.');

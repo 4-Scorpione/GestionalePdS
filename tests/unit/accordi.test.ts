@@ -204,4 +204,22 @@ describe('accordi quadro: situazione contrattuale', () => {
     const dopo = vistePds(dati, OGGI, 30).find((x) => x.pds.id === soloInviato)!;
     expect(importoImpegnato(dopo)).toBe(48_000_00);
   });
+
+  it('l’atto si invia e poi si stipula: prima della stipula impegna l’importo inviato', () => {
+    const { accordo } = preparaBase();
+    const id = esegui('contratti', {
+      tipo: 'atto.crea',
+      accordo_id: accordo,
+      dati: { numero: 'AdA 2', oggetto: null, importo_inviato: 80_000_00, protocollo_invio: '0007001', data_invio: '2026-03-01', protocollo_stipula: null, data_stipula: null, durata_giorni: 365, valore: 0, incentivabile: true, importo_incentivi: 1_600_00, note: null },
+    }).risultato.id!;
+    const situazione = () => visteAccordi(dati.accordi, dati.atti, vistePds(dati, OGGI, 30), OGGI)[0];
+    // 300.000 dell'AdA 1 stipulato + 80.000 inviati con l'AdA 2
+    expect(situazione().impegnatoAtti).toBe(380_000_00);
+    expect(situazione().incentivi).toBe(1_600_00);
+    esegui('contratti', { tipo: 'atto.modifica', id, modifiche: { valore: 78_000_00, data_stipula: '2026-03-20' }, originale: {} });
+    expect(situazione().impegnatoAtti).toBe(378_000_00);
+    // senza attività incentivabile l'importo per incentivi si azzera
+    esegui('contratti', { tipo: 'atto.modifica', id, modifiche: { incentivabile: false }, originale: {} });
+    expect(dati.atti.find((a) => a.id === id)!.importo_incentivi).toBeNull();
+  });
 });

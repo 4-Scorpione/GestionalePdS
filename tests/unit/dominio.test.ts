@@ -239,6 +239,7 @@ describe('sintesi finanziaria', () => {
   it('mostra il numero del PdS con l’anno dell’esercizio', () => {
     expect(numeroPds({ numero: '18' }, 2026)).toBe('18/2026');
     expect(numeroPds({ numero: '18' }, null)).toBe('18');
+    expect(numeroPds({ numero: '' }, 2026)).toBe('s.n./2026');
     expect(viste.find((v) => v.pds.id === 'p1')!.numeroCompleto).toBe('p1/2026');
   });
 
@@ -251,6 +252,17 @@ describe('sintesi finanziaria', () => {
     const attive = tutte.filter((v) => v.pds.eliminato_at == null);
     expect(calcolaSintesi(conEliminato.capitoli, attive).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(90_000_00);
     expect(calcolaSintesi(conEliminato.capitoli, tutte).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(100_000_00);
+  });
+
+  it('riporta a parte gli incentivi stanziati, esclusi dal residuo da pagare', () => {
+    const conIncentivi: DatiCondivisi = { ...dati, pds: dati.pds.map((p) => (p.id === 'p2' ? { ...p, incentivabile: true, importo_incentivi: 600_00 } : p)) };
+    const r = calcolaSintesi(conIncentivi.capitoli, vistePds(conIncentivi, '2026-06-01', 30)).righe.find((x) => x.capitolo.id === 'c1')!;
+    // l'impegno non cambia: gli incentivi sono una suddivisione del valore del PdS
+    expect(r.stipulato).toBe(68_000_00);
+    expect(r.incentivi).toBe(600_00);
+    expect(r.nIncentivabili).toBe(1);
+    // 30.000 stipulati − 600 di incentivi − 10.000 pagati
+    expect(r.residuoDaPagare).toBe(19_400_00);
   });
 
   it("calcola l'economia del singolo PdS", () => {
@@ -291,8 +303,9 @@ describe('permessi', () => {
 });
 
 describe('validazioni', () => {
-  it('richiede numero e capitolo del PdS', () => {
-    expect(() => validaDatiPds({ numero: ' ', capitolo_id: '' })).toThrow(/obbligatorio/);
+  it('richiede il capitolo del PdS, non il numero', () => {
+    expect(() => validaDatiPds({ numero: ' ', capitolo_id: '' })).toThrow(/Capitolo di spesa: campo obbligatorio/);
+    expect(validaDatiPds({ numero: ' ' }, true)).toEqual({ numero: '' });
     expect(() => validaDatiPds({ importo_inviato: -1 }, true)).toThrow(/positivo/);
     expect(validaDatiPds({ numero: ' 12 ', capitolo_id: 'c' }, true)).toEqual({ numero: '12', capitolo_id: 'c' });
     // l'anno lo aggiunge l'esercizio del capitolo: nel numero si inserisce solo la parte numerica

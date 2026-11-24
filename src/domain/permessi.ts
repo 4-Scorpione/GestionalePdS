@@ -28,12 +28,12 @@ export const AREE_PERMESSO: { area: AreaPermesso; etichetta: string; descrizione
   {
     area: 'pds_dati',
     etichetta: 'Dati del PdS',
-    descrizione: 'Modificare dati identificativi, invio, stipula, tempi di esecuzione e note',
+    descrizione: 'Modificare dati identificativi, invio, stipula (con DAC e atto dispositivo), incentivi, tempi di esecuzione e note',
   },
   {
     area: 'pds_pagamenti',
     etichetta: 'Pagamenti e saldo',
-    descrizione: 'Registrare i pagamenti e confermare o annullare il saldo',
+    descrizione: "Registrare i pagamenti, confermare o annullare il saldo e correggere l'economia",
   },
   {
     area: 'pds_allegati',
@@ -55,9 +55,16 @@ export const CAMPI_DATI_PDS = [
   'importo_inviato',
   'protocollo_invio',
   'data_invio',
+  'dac',
+  'protocollo_dac',
+  'data_dac',
+  'atto_dispositivo',
   'protocollo_stipula',
   'data_stipula',
   'valore_stipula',
+  'cig',
+  'incentivabile',
+  'importo_incentivi',
   'modalita_termine',
   'durata',
   'durata_unita',
@@ -65,8 +72,8 @@ export const CAMPI_DATI_PDS = [
   'note',
 ] as const satisfies readonly (keyof Pds)[];
 
-/** Campi del saldo, modificabili solo tramite conferma/annullamento saldo. */
-export const CAMPI_SALDO_PDS = ['saldato', 'data_saldo', 'totale_pagato_saldo'] as const satisfies readonly (keyof Pds)[];
+/** Campi del saldo, modificabili solo con i comandi del saldo (pagamento a saldo, economia, annullamento). */
+export const CAMPI_SALDO_PDS = ['saldato', 'data_saldo', 'totale_pagato_saldo', 'economia_importo', 'economia_note'] as const satisfies readonly (keyof Pds)[];
 
 export type CampoDatiPds = (typeof CAMPI_DATI_PDS)[number];
 

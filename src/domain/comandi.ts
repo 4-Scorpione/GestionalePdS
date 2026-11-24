@@ -1,4 +1,4 @@
-import type { AccordoQuadro, Allegato, AttoAdesione, Capitolo, DataISO, ID, Pagamento, Pds, Permessi, RigaSiefin, Ruolo } from './tipi';
+import type { AccordoQuadro, Allegato, AttoAdesione, Capitolo, Centesimi, DataISO, ID, Pagamento, Pds, Permessi, RigaSiefin, Ruolo } from './tipi';
 import type { CampoDatiPds } from './permessi';
 
 /**
@@ -13,9 +13,26 @@ export type DatiAccordo = Pick<
   AccordoQuadro,
   'numero' | 'oggetto' | 'ditta' | 'dec' | 'protocollo_stipula' | 'data_stipula' | 'durata_giorni' | 'importo' | 'note'
 >;
-export type DatiAtto = Pick<AttoAdesione, 'numero' | 'oggetto' | 'protocollo_stipula' | 'data_stipula' | 'durata_giorni' | 'valore' | 'note'>;
+export type DatiAtto = Pick<
+  AttoAdesione,
+  | 'numero'
+  | 'oggetto'
+  | 'importo_inviato'
+  | 'protocollo_invio'
+  | 'data_invio'
+  | 'protocollo_stipula'
+  | 'data_stipula'
+  | 'durata_giorni'
+  | 'valore'
+  | 'incentivabile'
+  | 'importo_incentivi'
+  | 'note'
+>;
 export type DatiPds = Pick<Pds, CampoDatiPds>;
-export type DatiPagamento = Pick<Pagamento, 'data' | 'importo' | 'riferimento' | 'note'>;
+export type DatiPagamento = Pick<
+  Pagamento,
+  'data' | 'importo' | 'riferimento' | 'note' | 'fattura' | 'saldo' | 'codice_titolo' | 'codice_memoriale' | 'data_titolo'
+>;
 export type DatiAllegato = Pick<Allegato, 'tipo' | 'titolo' | 'url'>;
 export interface DatiUtente {
   username: string;
@@ -60,7 +77,10 @@ export type Comando =
   | { tipo: 'pagamento.crea'; pds_id: ID; dati: DatiPagamento }
   | { tipo: 'pagamento.modifica'; id: ID; modifiche: Partial<DatiPagamento>; originale: Partial<DatiPagamento> }
   | { tipo: 'pagamento.elimina'; id: ID }
-  | { tipo: 'saldo.conferma'; pds_id: ID; data_saldo: DataISO; pagamento_finale: DatiPagamento | null }
+  /** Il saldo si conferma di norma con il pagamento a saldo; questo comando chiude il PdS senza un nuovo pagamento. */
+  | { tipo: 'saldo.conferma'; pds_id: ID; data_saldo: DataISO }
+  /** Correzione dell'economia di un PdS saldato: `economia` null torna al valore calcolato. */
+  | { tipo: 'saldo.economia'; pds_id: ID; economia: Centesimi | null; note: string | null }
   | { tipo: 'saldo.annulla'; pds_id: ID }
   | { tipo: 'allegato.crea'; pds_id: ID; dati: DatiAllegato; file: FileAllegato | null }
   | { tipo: 'allegato.elimina'; id: ID }

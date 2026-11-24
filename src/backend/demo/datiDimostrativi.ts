@@ -244,10 +244,22 @@ export function creaDatiDimostrativi(oggi: DataISO): { dati: DatiCondivisi; regi
       ...dati,
     };
     let totale = 0;
-    for (const [data, importo, protocollo] of elencoPagamenti) {
+    elencoPagamenti.forEach(([data, importo, protocollo], i) => {
       totale += euro(importo);
-      pagamenti.push({ id: id('pag'), pds_id: p.id, data, importo: euro(importo), riferimento: protocollo, note: null, ...tracciaCreazione(data, 'u-bianchi') });
-    }
+      pagamenti.push({
+        id: id('pag'),
+        pds_id: p.id,
+        data,
+        importo: euro(importo),
+        riferimento: protocollo,
+        fattura: `FPA ${i + 1}/${annoDi(data)}`,
+        // l'ultimo pagamento dei PdS saldati è il pagamento a saldo
+        saldo: Boolean(saldo) && i === elencoPagamenti.length - 1,
+        ...(p.dac ? { codice_titolo: `T-${protocollo}`, codice_memoriale: `M-${protocollo.slice(-4)}`, data_titolo: data } : {}),
+        note: null,
+        ...tracciaCreazione(data, 'u-bianchi'),
+      });
+    });
     if (saldo) {
       p.saldato = true;
       p.data_saldo = saldo;
@@ -325,9 +337,16 @@ export function creaDatiDimostrativi(oggi: DataISO): { dati: DatiCondivisi; regi
       importo_inviato: euro(500_000),
       protocollo_invio: '0007011',
       data_invio: `${P}-04-10`,
+      dac: true,
+      protocollo_dac: '0007450',
+      data_dac: `${P}-04-24`,
+      atto_dispositivo: `AD 45/${P}`,
       protocollo_stipula: '0008120',
       data_stipula: `${P}-05-20`,
       valore_stipula: euro(480_000),
+      cig: 'B1C2D3E4F5',
+      incentivabile: true,
+      importo_incentivi: euro(9_600),
       modalita_termine: 'data',
       data_termine: `${P}-12-31`,
       note: 'Collaudo parziale eseguito; in attesa della documentazione finale.',

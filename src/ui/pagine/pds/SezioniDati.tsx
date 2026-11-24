@@ -1,5 +1,5 @@
-import { Anchor, Group, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Text, Textarea } from '@mantine/core';
-import { IconCalendarTime, IconId, IconNote, IconSend, IconSignature } from '@tabler/icons-react';
+import { Anchor, Checkbox, Divider, Group, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Text, Textarea, TextInput } from '@mantine/core';
+import { IconCalendarTime, IconCoins, IconId, IconNote, IconSend, IconSignature } from '@tabler/icons-react';
 import { etichettaAtto } from '../../../domain/accordi';
 import type { PdsVista } from '../../../domain/calcoli';
 import { etichettaCapitolo } from '../../../domain/calcoli';
@@ -10,7 +10,7 @@ import { dataScadenza } from '../../../domain/stato';
 import type { ModalitaTermine, UnitaDurata } from '../../../domain/tipi';
 import { useApp } from '../../../stato/store';
 import { Campo, IndicatoreScadenza, Importo, Protocollo, Testo } from '../../componenti/base';
-import { CampiIdentificativiPds } from '../../componenti/CampiPds';
+import { CampiIdentificativiPds, CampiIncentivi } from '../../componenti/CampiPds';
 import { CampoData, CampoImporto, CampoProtocollo } from '../../componenti/campi';
 import { href } from '../../router';
 import { ElencoIdv } from '../ElencoPds';
@@ -38,13 +38,11 @@ export function SezioneIdentificativi({ vista }: PropsSezione) {
       campi={CAMPI_IDENTIFICATIVI}
       puoModificare={puoModificare}
       verifica={(v) =>
-        !v.numero?.trim()
-          ? 'Il numero del PdS è obbligatorio.'
-          : !/^\d{1,20}$/.test(v.numero.trim())
-            ? 'Il numero del PdS deve contenere solo cifre: l’anno arriva dall’esercizio finanziario.'
-            : !v.capitolo_id
-              ? 'Selezionare il capitolo di spesa.'
-              : null
+        v.numero?.trim() && !/^\d{1,20}$/.test(v.numero.trim())
+          ? 'Il numero del PdS deve contenere solo cifre: l’anno arriva dall’esercizio finanziario.'
+          : !v.capitolo_id
+            ? 'Selezionare il capitolo di spesa.'
+            : null
       }
       lettura={
         <GrigliaCampi>
@@ -140,10 +138,20 @@ export function SezioneStipula({ vista }: PropsSezione) {
       titolo="Stipula"
       icona={<IconSignature size={18} />}
       pds={p}
-      campi={['protocollo_stipula', 'data_stipula', 'valore_stipula'] as const}
+      campi={['dac', 'protocollo_dac', 'data_dac', 'atto_dispositivo', 'protocollo_stipula', 'data_stipula', 'valore_stipula', 'cig'] as const}
       puoModificare={puoModificare}
       lettura={
         <GrigliaCampi>
+          {p.dac && (
+            <>
+              <Campo etichetta="DAC (Determina a Contrarre)">
+                <Protocollo numero={p.protocollo_dac} data={p.data_dac} />
+              </Campo>
+              <Campo etichetta="Atto dispositivo">
+                <Testo valore={p.atto_dispositivo} />
+              </Campo>
+            </>
+          )}
           <Campo etichetta="Valore della stipula">
             <Importo valore={p.valore_stipula} forte />
             {differenza != null && differenza !== 0 && (
@@ -156,12 +164,38 @@ export function SezioneStipula({ vista }: PropsSezione) {
           <Campo etichetta="Protocollo di stipula">
             <Protocollo numero={p.protocollo_stipula} data={p.data_stipula} />
           </Campo>
+          <Campo etichetta="CIG">
+            <Testo valore={p.cig} />
+          </Campo>
         </GrigliaCampi>
       }
       modifica={(v, imposta) => (
         <Stack gap="xs">
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          {/* alcuni PdS arrivano direttamente con la stipula; per gli altri prima la DAC, poi l'atto dispositivo */}
+          <Checkbox
+            label="PdS con Determina a Contrarre"
+            description="Abilita DAC e atto dispositivo, e nei pagamenti codice titolo, codice memoriale e data titolo"
+            checked={v.dac === true}
+            onChange={(e) => imposta('dac', e.currentTarget.checked)}
+          />
+          {v.dac && (
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+              <CampoProtocollo label="Protocollo della DAC" value={v.protocollo_dac ?? null} onChange={(x) => imposta('protocollo_dac', x)} />
+              <CampoData label="Data della DAC" value={v.data_dac ?? null} onChange={(x) => imposta('data_dac', x)} />
+              <TextInput label="Atto dispositivo" value={v.atto_dispositivo ?? ''} onChange={(e) => imposta('atto_dispositivo', e.currentTarget.value || null)} maxLength={100} />
+            </SimpleGrid>
+          )}
+          <Divider />
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <CampoImporto label="Valore della stipula" value={v.valore_stipula} onChange={(x) => imposta('valore_stipula', x)} />
+            <TextInput
+              label="CIG"
+              description="Si inserisce con la stipula o dopo"
+              value={v.cig ?? ''}
+              onChange={(e) => imposta('cig', e.currentTarget.value.toUpperCase() || null)}
+              maxLength={20}
+              classNames={{ input: 'num' }}
+            />
             <CampoProtocollo label="Numero di protocollo" value={v.protocollo_stipula} onChange={(x) => imposta('protocollo_stipula', x)} />
             <CampoData label="Data del protocollo (data di stipula)" value={v.data_stipula} onChange={(x) => imposta('data_stipula', x)} />
           </SimpleGrid>
@@ -169,6 +203,53 @@ export function SezioneStipula({ vista }: PropsSezione) {
             La stipula è considerata avvenuta quando è indicata la data di stipula: da quel momento il PdS risulta stipulato (in esecuzione).
           </Text>
         </Stack>
+      )}
+    />
+  );
+}
+
+export function SezioneIncentivi({ vista }: PropsSezione) {
+  const puoModificare = usePuoDati(vista);
+  const p = vista.pds;
+  const valore = p.valore_stipula ?? p.importo_inviato;
+  return (
+    <SezioneModificabile
+      titolo="Attività incentivabile"
+      icona={<IconCoins size={18} />}
+      pds={p}
+      campi={['incentivabile', 'importo_incentivi'] as const}
+      puoModificare={puoModificare}
+      lettura={
+        p.incentivabile ? (
+          <GrigliaCampi>
+            <Campo etichetta="Importo per incentivi">
+              <Importo valore={vista.incentivi} forte />
+              {valore != null && valore > 0 && (
+                <Text fz="xs" c="dimmed" className="num">
+                  {formattaPercentuale(rapporto(vista.incentivi, valore))} del valore del PdS
+                </Text>
+              )}
+            </Campo>
+            <Campo etichetta="Da pagare alla ditta">
+              <Importo valore={valore != null ? valore - vista.incentivi : null} />
+              <Text fz="xs" c="dimmed">
+                Valore del PdS al netto degli incentivi
+              </Text>
+            </Campo>
+          </GrigliaCampi>
+        ) : (
+          <Text fz="sm" c="dimmed">
+            Attività non incentivabile.
+          </Text>
+        )
+      }
+      modifica={(v, imposta) => (
+        <CampiIncentivi
+          attivo={v.incentivabile === true}
+          importo={v.importo_incentivi ?? null}
+          setAttivo={(x) => imposta('incentivabile', x)}
+          setImporto={(x) => imposta('importo_incentivi', x)}
+        />
       )}
     />
   );

@@ -1,4 +1,4 @@
-import { confrontoNaturale, type PdsVista } from './calcoli';
+import { confrontoNaturale, incentivi, type PdsVista } from './calcoli';
 import { aggiungiGiorni, differenzaGiorni } from './date';
 import { rapporto, sommaCentesimi } from './importi';
 import { stipulaAvvenuta } from './stato';
@@ -13,7 +13,14 @@ import type { AccordoQuadro, AttoAdesione, Centesimi, DataISO, ID } from './tipi
  *   all'AQ**, che sono gli atti di adesione a quantità determinata.
  * - Un PdS collegato a un atto di adesione impegna i fondi del capitolo e
  *   consuma la quota parte dell'atto, non altra capienza dell'AQ.
+ * - Come i PdS, l'atto si invia e poi si stipula: impegna la capienza con il
+ *   valore stipulato o, prima della stipula, con l'importo inviato.
  */
+
+/** Capienza dell'AQ impegnata dall'atto: valore stipulato o, se manca, importo inviato. */
+export function impegnoAtto(a: Pick<AttoAdesione, 'valore' | 'importo_inviato'>): Centesimi {
+  return a.valore || a.importo_inviato || 0;
+}
 
 /** Importo con cui un PdS impegna: il valore di stipula se c'è, altrimenti l'importo trasmesso. */
 export function importoImpegnato(v: PdsVista): Centesimi {
@@ -33,6 +40,8 @@ export interface VistaAtto {
   pds: PdsVista[];
   scadenza: DataISO | null;
   giorniAllaScadenza: number | null;
+  /** Capienza dell'AQ impegnata dall'atto (valore stipulato o importo inviato). */
+  valore: Centesimi;
   /** Somma degli importi impegnati dai PdS collegati. */
   impegnato: Centesimi;
   pagato: Centesimi;
@@ -61,22 +70,26 @@ export interface VistaAccordo {
   /** Importo complessivo degli ordinativi (PdS) emessi sull'AQ. */
   ordinato: Centesimi;
   pagato: Centesimi;
+  /** Quota dell'impegnato stanziata per incentivi (atti di adesione e PdS diretti). */
+  incentivi: Centesimi;
   nPds: number;
   superamento: Centesimi;
 }
 
 function vistaAtto(atto: AttoAdesione, pds: PdsVista[], oggi: DataISO): VistaAtto {
   const scadenza = scadenzaContrattuale(atto.data_stipula, atto.durata_giorni);
+  const valore = impegnoAtto(atto);
   const impegnato = sommaCentesimi(pds.map(importoImpegnato));
   return {
     atto,
     pds,
     scadenza,
     giorniAllaScadenza: scadenza ? differenzaGiorni(oggi, scadenza) : null,
+    valore,
     impegnato,
     pagato: sommaCentesimi(pds.map((v) => v.totalePagato)),
-    residuo: atto.valore - impegnato,
-    quotaImpegnata: rapporto(impegnato, atto.valore),
+    residuo: valore - impegnato,
+    quotaImpegnata: rapporto(impegnato, valore),
   };
 }
 
@@ -87,7 +100,7 @@ export function vistaAccordo(accordo: AccordoQuadro, atti: AttoAdesione[], viste
     .sort((a, b) => confrontoNaturale(a.numero, b.numero));
   const vistaAtti = attiAccordo.map((a) => vistaAtto(a, pds.filter((v) => v.pds.atto_adesione_id === a.id), oggi));
   const pdsDiretti = pds.filter((v) => v.pds.atto_adesione_id == null);
-  const impegnatoAtti = sommaCentesimi(attiAccordo.map((a) => a.valore));
+  const impegnatoAtti = sommaCentesimi(attiAccordo.map(impegnoAtto));
   const impegnatoDiretto = sommaCentesimi(pdsDiretti.map(importoImpegnato));
   const impegnato = impegnatoAtti + impegnatoDiretto;
   const scadenza = scadenzaContrattuale(accordo.data_stipula, accordo.durata_giorni);
@@ -105,6 +118,7 @@ export function vistaAccordo(accordo: AccordoQuadro, atti: AttoAdesione[], viste
     quotaImpegnata: rapporto(impegnato, accordo.importo),
     ordinato: sommaCentesimi(pds.map(importoImpegnato)),
     pagato: sommaCentesimi(pds.map((v) => v.totalePagato)),
+    incentivi: sommaCentesimi([...attiAccordo.map(incentivi), ...pdsDiretti.map((v) => v.incentivi)]),
     nPds: pds.length,
     superamento: Math.max(0, impegnato - accordo.importo),
   };

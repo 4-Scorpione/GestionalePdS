@@ -4,6 +4,7 @@ import { ErroreApp } from '../../src/domain/errori';
 import type { DatiCondivisi, Utente } from '../../src/domain/tipi';
 import { PERMESSI_NESSUNO, PERMESSI_TUTTI, datiVuoti } from '../../src/domain/tipi';
 import { applicaComando, type ContestoComando, type EsitoMotore } from '../../src/motore/motore';
+import { vistePds } from '../../src/domain/calcoli';
 
 const T = '2026-01-01T00:00:00.000Z';
 let contatore = 0;
@@ -140,6 +141,14 @@ describe('PdS', () => {
     expect(p.saldato).toBe(false);
   });
 
+  it('il numero del PdS è facoltativo, il capitolo no', () => {
+    const { c1 } = preparaCapitoli();
+    const id = esegui('admin', { tipo: 'pds.crea', dati: { numero: '', capitolo_id: c1 } }).risultato.id!;
+    expect(vistePds(dati, '2026-06-01', 30).find((v) => v.pds.id === id)!.numeroCompleto).toBe('s.n./2026');
+    const senzaCapitolo = { tipo: 'pds.crea', dati: { numero: '3', capitolo_id: '' } } as Comando;
+    expect(errore(() => esegui('admin', senzaCapitolo)).codice).toBe('VALIDAZIONE');
+  });
+
   it("rispetta l'ambito dei capitoli assegnati", () => {
     const { c1, c2 } = preparaCapitoli();
     expect(errore(() => esegui('operatore', { tipo: 'pds.crea', dati: { numero: '7', capitolo_id: c2 } })).codice).toBe('PERMESSO_NEGATO');
@@ -224,39 +233,81 @@ describe('pagamenti e saldo', () => {
     return id;
   }
 
-  it('conferma il saldo registrando il pagamento finale e il totale', () => {
+  it('il pagamento a saldo chiude il PdS registrando il totale pagato', () => {
     const id = preparaPdsStipulato();
-    esegui('operatore', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-03-01', importo: 4_000_00, riferimento: '0000101', note: null } });
+    esegui('operatore', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-03-01', importo: 4_000_00, riferimento: '0000101', note: null, fattura: 'FT 12/2026' } });
     const esito = esegui('operatore', {
-      tipo: 'saldo.conferma',
+      tipo: 'pagamento.crea',
       pds_id: id,
-      data_saldo: '2026-05-10',
-      pagamento_finale: { data: '2026-05-10', importo: 5_800_00, riferimento: '0000102', note: null },
+      dati: { data: '2026-05-10', importo: 5_800_00, riferimento: '0000102', note: null, saldo: true },
     });
     const p = dati.pds.find((x) => x.id === id)!;
     expect(p.saldato).toBe(true);
+    expect(p.data_saldo).toBe('2026-05-10');
     expect(p.totale_pagato_saldo).toBe(9_800_00);
-    expect(dati.pagamenti).toHaveLength(2);
+    expect(dati.pagamenti.map((k) => k.fattura)).toEqual(['FT 12/2026', null]);
     expect(esito.voci.map((v) => `${v.entita}:${v.azione}`)).toEqual(['pagamento:creazione', 'pds:modifica']);
+  });
+
+  it('segnare a saldo un pagamento già registrato chiude il PdS', () => {
+    const id = preparaPdsStipulato();
+    const pag = esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-03-01', importo: 10_000_00, riferimento: null, note: null } }).risultato.id!;
+    esegui('admin', { tipo: 'pagamento.modifica', id: pag, modifiche: { saldo: true }, originale: { saldo: false } });
+    expect(dati.pds.find((x) => x.id === id)!.saldato).toBe(true);
   });
 
   it('blocca i pagamenti sui PdS saldati finché il saldo non è annullato', () => {
     const id = preparaPdsStipulato();
-    esegui('admin', { tipo: 'saldo.conferma', pds_id: id, data_saldo: '2026-05-10', pagamento_finale: null });
+    esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-05-10', importo: 9_000_00, riferimento: null, note: null, saldo: true } });
     const pag = { data: '2026-05-11', importo: 1, riferimento: null, note: null };
     expect(errore(() => esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: pag })).codice).toBe('VINCOLO');
-    expect(errore(() => esegui('admin', { tipo: 'saldo.conferma', pds_id: id, data_saldo: '2026-05-10', pagamento_finale: null })).codice).toBe('VINCOLO');
+    expect(errore(() => esegui('admin', { tipo: 'saldo.conferma', pds_id: id, data_saldo: '2026-05-10' })).codice).toBe('VINCOLO');
     esegui('admin', { tipo: 'saldo.annulla', pds_id: id });
+    // il pagamento a saldo torna ordinario e se ne possono registrare altri
+    expect(dati.pagamenti[0].saldo).toBe(false);
     esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: pag });
     const p = dati.pds.find((x) => x.id === id)!;
     expect(p.saldato).toBe(false);
     expect(p.totale_pagato_saldo).toBeNull();
   });
 
-  it('richiede la stipula per confermare il saldo', () => {
-    const { c1 } = preparaCapitoli();
-    const id = esegui('admin', { tipo: 'pds.crea', dati: { numero: '2', capitolo_id: c1 } }).risultato.id!;
-    expect(errore(() => esegui('admin', { tipo: 'saldo.conferma', pds_id: id, data_saldo: '2026-05-10', pagamento_finale: null })).codice).toBe('VINCOLO');
+  it('chiude il PdS anche senza un nuovo pagamento, ma solo dopo la stipula', () => {
+    const id = preparaPdsStipulato();
+    esegui('admin', { tipo: 'saldo.conferma', pds_id: id, data_saldo: '2026-05-10' });
+    expect(dati.pds.find((x) => x.id === id)!.totale_pagato_saldo).toBe(0);
+    const id2 = esegui('admin', { tipo: 'pds.crea', dati: { numero: '2', capitolo_id: dati.capitoli[0].id } }).risultato.id!;
+    expect(errore(() => esegui('admin', { tipo: 'saldo.conferma', pds_id: id2, data_saldo: '2026-05-10' })).codice).toBe('VINCOLO');
+    const pag = { data: '2026-05-10', importo: 1, riferimento: null, note: null, saldo: true };
+    expect(errore(() => esegui('admin', { tipo: 'pagamento.crea', pds_id: id2, dati: pag })).codice).toBe('VINCOLO');
+  });
+
+  it("calcola l'economia al netto degli incentivi e la lascia correggere dopo il saldo", () => {
+    const id = preparaPdsStipulato();
+    esegui('admin', { tipo: 'pds.modifica', id, modifiche: { incentivabile: true, importo_incentivi: 200_00 }, originale: {} });
+    expect(errore(() => esegui('admin', { tipo: 'saldo.economia', pds_id: id, economia: 1, note: null })).codice).toBe('VINCOLO');
+    esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-05-10', importo: 9_000_00, riferimento: null, note: null, saldo: true } });
+    const viste = () => vistePds(dati, '2026-06-01', 30).find((v) => v.pds.id === id)!;
+    // 10.000 stipulati − 200 di incentivi − 9.000 pagati
+    expect(viste().economia).toBe(800_00);
+    esegui('admin', { tipo: 'saldo.economia', pds_id: id, economia: 500_00, note: 'Penale trattenuta' });
+    expect(viste().economia).toBe(500_00);
+    expect(dati.pds.find((x) => x.id === id)!.economia_note).toBe('Penale trattenuta');
+    esegui('admin', { tipo: 'saldo.economia', pds_id: id, economia: null, note: null });
+    expect(viste().economia).toBe(800_00);
+    expect(errore(() => esegui('lettore', { tipo: 'saldo.economia', pds_id: id, economia: 1, note: null })).codice).toBe('PERMESSO_NEGATO');
+  });
+
+  it('conserva i dati del titolo di spesa solo per i PdS con DAC', () => {
+    const id = preparaPdsStipulato();
+    const titolo = { codice_titolo: 'T1', codice_memoriale: 'M1', data_titolo: '2026-03-02' };
+    esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-03-01', importo: 1_00, riferimento: null, note: null, ...titolo } });
+    expect(dati.pagamenti[0].codice_titolo).toBeNull();
+    esegui('admin', { tipo: 'pds.modifica', id, modifiche: { dac: true, protocollo_dac: '0000555', data_dac: '2026-01-10', atto_dispositivo: 'AD 3/2026' }, originale: {} });
+    esegui('admin', { tipo: 'pagamento.crea', pds_id: id, dati: { data: '2026-03-05', importo: 1_00, riferimento: null, note: null, ...titolo } });
+    expect(dati.pagamenti[1]).toMatchObject(titolo);
+    // togliendo la DAC i suoi dati si svuotano
+    esegui('admin', { tipo: 'pds.modifica', id, modifiche: { dac: false }, originale: {} });
+    expect(dati.pds.find((x) => x.id === id)).toMatchObject({ dac: false, protocollo_dac: null, data_dac: null, atto_dispositivo: null });
   });
 
   it('nega i pagamenti a chi non ha il permesso', () => {

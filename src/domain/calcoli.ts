@@ -18,9 +18,11 @@ export interface PdsVista {
   avviso: LivelloAvviso | null;
   pagamenti: Pagamento[];
   totalePagato: Centesimi;
-  /** Economia = valore di stipula − totale pagato a saldo (solo per PdS saldati). */
+  /** Quota del valore stanziata per incentivi (0 se l'attività non è incentivabile). */
+  incentivi: Centesimi;
+  /** Economia dei PdS saldati: quella corretta dall'utente o, in mancanza, stipulato − incentivi − pagato a saldo. */
   economia: Centesimi | null;
-  /** Quota pagata rispetto al valore stipulato. */
+  /** Quota pagata rispetto al valore stipulato al netto degli incentivi (che non si pagano alla ditta). */
   quotaPagata: number | null;
   allegati: Allegato[];
 }
@@ -55,9 +57,24 @@ export function indicizza(dati: DatiCondivisi): IndiciDati {
   return { capitoliPerId, accordiPerId, attiPerId, pagamentiPerPds, allegatiPerPds };
 }
 
-export function economia(p: Pick<Pds, 'saldato' | 'valore_stipula' | 'totale_pagato_saldo'>): Centesimi | null {
+/** Quota del PdS (o dell'atto di adesione) stanziata per incentivi: è compresa nel valore e non si paga alla ditta. */
+export function incentivi(p: { incentivabile?: boolean; importo_incentivi?: Centesimi | null }): Centesimi {
+  return p.incentivabile ? (p.importo_incentivi ?? 0) : 0;
+}
+
+/** Economia calcolata al saldo: stipulato − incentivi − totale pagato a saldo. */
+export function economiaCalcolata(
+  p: Pick<Pds, 'saldato' | 'valore_stipula' | 'totale_pagato_saldo' | 'incentivabile' | 'importo_incentivi'>,
+): Centesimi | null {
   if (!p.saldato || p.valore_stipula == null || p.totale_pagato_saldo == null) return null;
-  return p.valore_stipula - p.totale_pagato_saldo;
+  return p.valore_stipula - incentivi(p) - p.totale_pagato_saldo;
+}
+
+export function economia(
+  p: Pick<Pds, 'saldato' | 'valore_stipula' | 'totale_pagato_saldo' | 'incentivabile' | 'importo_incentivi' | 'economia_importo'>,
+): Centesimi | null {
+  if (!p.saldato) return null;
+  return p.economia_importo ?? economiaCalcolata(p);
 }
 
 export function vistaPds(p: Pds, indici: IndiciDati, oggi: DataISO, sogliaGiorni: number): PdsVista {
@@ -65,6 +82,7 @@ export function vistaPds(p: Pds, indici: IndiciDati, oggi: DataISO, sogliaGiorni
   const pagamenti = indici.pagamentiPerPds.get(p.id) ?? [];
   const totalePagato = sommaCentesimi(pagamenti.map((x) => x.importo));
   const avviso = avvisoScadenza(p, oggi, sogliaGiorni);
+  const quotaIncentivi = incentivi(p);
   return {
     pds: p,
     capitolo,
@@ -78,8 +96,9 @@ export function vistaPds(p: Pds, indici: IndiciDati, oggi: DataISO, sogliaGiorni
     avviso: avviso.livello,
     pagamenti,
     totalePagato,
+    incentivi: quotaIncentivi,
     economia: economia(p),
-    quotaPagata: p.valore_stipula != null ? rapporto(totalePagato, p.valore_stipula) : null,
+    quotaPagata: p.valore_stipula != null ? rapporto(totalePagato, p.valore_stipula - quotaIncentivi) : null,
     allegati: indici.allegatiPerPds.get(p.id) ?? [],
   };
 }
@@ -125,9 +144,10 @@ export function etichettaCapitolo(c: Pick<Capitolo, 'codice' | 'esercizio' | 'de
  * Numero del PdS mostrato all'utente: si inseriscono il numero e l'esercizio
  * finanziario e si leggono insieme come "25/2026". Se il numero conservato
  * contiene già l'anno (dati inseriti con versioni precedenti) resta invariato.
+ * Le attività senza numero di PdS compaiono come "s.n./2026".
  */
 export function numeroPds(p: Pick<Pds, 'numero'>, esercizio: number | null | undefined): string {
-  const n = p.numero.trim();
+  const n = p.numero.trim() || 's.n.';
   if (esercizio == null || n.includes('/')) return n;
   return `${n}/${esercizio}`;
 }

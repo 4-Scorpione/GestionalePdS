@@ -76,14 +76,25 @@ test.describe('modalità dimostrativa', () => {
     await modalePagamento.getByLabel('Numero di protocollo').fill('0001234');
     await modalePagamento.getByRole('button', { name: 'Salva' }).click();
     await notifica(page, 'Pagamento registrato');
-    await pagamenti.getByRole('button', { name: 'Conferma saldo' }).click();
+    // l'ultimo pagamento, segnato «a saldo», chiude il PdS
+    await pagamenti.getByRole('button', { name: 'Registra pagamento' }).click();
     const modaleSaldo = page.getByRole('dialog');
-    await expect(modaleSaldo.getByLabel('Importo del pagamento a saldo')).toHaveValue('4.500,00 €');
-    await modaleSaldo.getByLabel('Importo del pagamento a saldo').fill('4400');
+    await modaleSaldo.getByLabel('Fattura').fill('FPA 7/2026');
+    await modaleSaldo.getByLabel('Importo').fill('4400');
+    await modaleSaldo.getByLabel('Pagamento a saldo').check();
     await expect(modaleSaldo.getByText('100,00 €')).toBeVisible();
-    await modaleSaldo.getByRole('button', { name: 'Conferma saldo' }).click();
-    await notifica(page, 'Saldo del PdS 99/2026 confermato');
+    await modaleSaldo.getByRole('button', { name: 'Salva e conferma il saldo' }).click();
+    await notifica(page, 'Pagamento a saldo registrato: PdS 99/2026 saldato');
     await expect(pagamenti.getByText(/Saldo confermato il/)).toBeVisible();
+    await expect(pagamenti.getByText('FPA 7/2026')).toBeVisible();
+    // l'economia calcolata si può correggere e motivare
+    await pagamenti.getByRole('button', { name: "Modifica l'economia" }).click();
+    const modaleEconomia = page.getByRole('dialog');
+    await expect(modaleEconomia.getByLabel('Economia')).toHaveValue('100,00 €');
+    await modaleEconomia.getByLabel('Note esplicative').fill('Ribasso sui materiali');
+    await modaleEconomia.getByRole('button', { name: 'Salva' }).click();
+    await notifica(page, 'Economia aggiornata');
+    await expect(pagamenti.getByText('Ribasso sui materiali')).toBeVisible();
     await expect(page.getByRole('heading', { name: /PdS 99\/2026/ }).getByText('Saldato')).toBeVisible();
     await expect(scheda(page, 'Storico modifiche').getByText('Saldo confermato – PdS 99/2026')).toBeVisible();
 
@@ -206,6 +217,9 @@ test.describe('modalità dimostrativa', () => {
     await modale.getByLabel('Importo del PdS inviato').fill('15000');
     await compilaData(modale.getByLabel('Data di invio'), '15/02/2026');
     await modale.getByRole('button', { name: 'Crea PdS' }).click();
+    // senza protocollo di invio basta una conferma
+    await expect(page.getByRole('dialog', { name: 'Dati per l’invio incompleti' })).toContainText('Mancano: protocollo di invio.');
+    await page.getByRole('button', { name: 'Crea comunque' }).click();
     await expect(page.getByRole('heading', { name: /PdS 77\/2026/ })).toBeVisible();
 
     // L'accordo quadro registra l'ordinativo e aggiorna il residuo dell'atto
@@ -286,6 +300,7 @@ test.describe('modalità dimostrativa', () => {
     await idv.press('Enter');
     await expect(modalePds.getByRole('combobox', { name: 'Capitolo di spesa' })).toHaveValue('1189/7/61 Fuori Area 2026 - Anticipazione');
     await modalePds.getByRole('button', { name: 'Crea PdS' }).click();
+    await page.getByRole('button', { name: 'Crea comunque' }).click();
     await expect(page.getByRole('heading', { name: /PdS 901\/2026/ })).toBeVisible();
     await vaiA(page, 'Progetti di spesa');
     await expect(page.getByRole('row').filter({ hasText: '901/2026' })).toContainText('Fuori Area 2026 - Anticipazione');

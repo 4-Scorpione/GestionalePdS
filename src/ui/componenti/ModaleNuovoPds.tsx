@@ -6,8 +6,8 @@ import { puo } from '../../domain/permessi';
 import type { Centesimi, DataISO, ID } from '../../domain/tipi';
 import { useApp } from '../../stato/store';
 import { naviga } from '../router';
-import { notificaSuccesso, useAzione } from './azioni';
-import { CampiIdentificativiPds, type ValoriIdentificativi } from './CampiPds';
+import { chiediConferma, notificaSuccesso, useAzione } from './azioni';
+import { CampiIdentificativiPds, CampiIncentivi, type ValoriIdentificativi } from './CampiPds';
 import { CampoData, CampoImporto, CampoProtocollo } from './campi';
 
 const VUOTI: ValoriIdentificativi = {
@@ -29,6 +29,8 @@ export function ModaleNuovoPds({ aperto, onClose }: { aperto: boolean; onClose: 
   const [importo, setImporto] = useState<Centesimi | null>(null);
   const [protocollo, setProtocollo] = useState<string | null>(null);
   const [dataInvio, setDataInvio] = useState<DataISO | null>(null);
+  const [incentivabile, setIncentivabile] = useState(false);
+  const [incentivi, setIncentivi] = useState<Centesimi | null>(null);
 
   const imposta = <C extends keyof ValoriIdentificativi>(campo: C, valore: ValoriIdentificativi[C]) =>
     setValori((v) => ({ ...v, [campo]: valore }));
@@ -38,6 +40,8 @@ export function ModaleNuovoPds({ aperto, onClose }: { aperto: boolean; onClose: 
     setImporto(null);
     setProtocollo(null);
     setDataInvio(null);
+    setIncentivabile(false);
+    setIncentivi(null);
   };
 
   const capitolo = capitoli.find((c) => c.id === valori.capitolo_id);
@@ -45,7 +49,24 @@ export function ModaleNuovoPds({ aperto, onClose }: { aperto: boolean; onClose: 
 
   const invia = async (e: FormEvent) => {
     e.preventDefault();
-    if (!valori.capitolo_id || !valori.numero.trim()) return;
+    if (!valori.capitolo_id) return;
+    // tutti i dati sono facoltativi: se mancano quelli dell'invio basta una conferma
+    const mancanti = [
+      !valori.numero.trim() && 'numero del PdS',
+      importo == null && 'importo inviato',
+      !protocollo && 'protocollo di invio',
+      !dataInvio && 'data di invio',
+    ].filter(Boolean);
+    if (
+      mancanti.length &&
+      !(await chiediConferma({
+        titolo: 'Dati per l’invio incompleti',
+        messaggio: `Mancano: ${mancanti.join(', ')}. Creare comunque il PdS? Si possono completare in seguito.`,
+        conferma: 'Crea comunque',
+      }))
+    ) {
+      return;
+    }
     const risultato = await esegui(() =>
       useApp.getState().esegui({
         tipo: 'pds.crea',
@@ -55,6 +76,8 @@ export function ModaleNuovoPds({ aperto, onClose }: { aperto: boolean; onClose: 
           importo_inviato: importo,
           protocollo_invio: protocollo,
           data_invio: dataInvio,
+          incentivabile,
+          importo_incentivi: incentivi,
         },
       }),
     );
@@ -82,11 +105,13 @@ export function ModaleNuovoPds({ aperto, onClose }: { aperto: boolean; onClose: 
             <CampoProtocollo label="Numero di protocollo" value={protocollo} onChange={setProtocollo} />
             <CampoData label="Data di invio" value={dataInvio} onChange={setDataInvio} />
           </SimpleGrid>
+          <Divider label="Incentivi (facoltativi)" labelPosition="left" mt="xs" />
+          <CampiIncentivi attivo={incentivabile} importo={incentivi} setAttivo={setIncentivabile} setImporto={setIncentivi} />
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={onClose}>
               Annulla
             </Button>
-            <Button type="submit" loading={inCorso} disabled={!valori.numero.trim() || !valori.capitolo_id}>
+            <Button type="submit" loading={inCorso} disabled={!valori.capitolo_id}>
               Crea PdS
             </Button>
           </Group>
