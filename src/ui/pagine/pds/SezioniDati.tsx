@@ -25,7 +25,7 @@ function usePuoDati(vista: PdsVista) {
   return puo(utente, 'pds_dati', vista.capitolo);
 }
 
-const CAMPI_IDENTIFICATIVI = ['numero', 'capitolo_id', 'accordo_id', 'atto_adesione_id', 'ditta', 'ordinativo', 'idv', 'dec'] as const;
+const CAMPI_IDENTIFICATIVI = ['numero', 'capitolo_id', 'accordo_id', 'atto_adesione_id', 'ditta', 'idv', 'dec'] as const;
 
 export function SezioneIdentificativi({ vista }: PropsSezione) {
   const puoModificare = usePuoDati(vista);
@@ -71,9 +71,6 @@ export function SezioneIdentificativi({ vista }: PropsSezione) {
           </Campo>
           <Campo etichetta="Atto di adesione">
             <Testo valore={vista.atto ? etichettaAtto(vista.atto) : null} />
-          </Campo>
-          <Campo etichetta="Ordinativo">
-            <Testo valore={p.ordinativo} />
           </Campo>
           <Campo etichetta="IDV">
             <ElencoIdv v={vista} />
@@ -138,7 +135,7 @@ export function SezioneStipula({ vista }: PropsSezione) {
       titolo="Stipula"
       icona={<IconSignature size={18} />}
       pds={p}
-      campi={['dac', 'protocollo_dac', 'data_dac', 'atto_dispositivo', 'protocollo_stipula', 'data_stipula', 'valore_stipula', 'cig'] as const}
+      campi={['dac', 'protocollo_dac', 'data_dac', 'atto_dispositivo', 'protocollo_stipula', 'data_stipula', 'valore_stipula', 'ordinativo', 'cig'] as const}
       puoModificare={puoModificare}
       lettura={
         <GrigliaCampi>
@@ -164,6 +161,9 @@ export function SezioneStipula({ vista }: PropsSezione) {
           <Campo etichetta="Protocollo di stipula">
             <Protocollo numero={p.protocollo_stipula} data={p.data_stipula} />
           </Campo>
+          <Campo etichetta="Ordinativo">
+            <Testo valore={p.ordinativo} />
+          </Campo>
           <Campo etichetta="CIG">
             <Testo valore={p.cig} />
           </Campo>
@@ -186,8 +186,13 @@ export function SezioneStipula({ vista }: PropsSezione) {
             </SimpleGrid>
           )}
           <Divider />
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             <CampoImporto label="Valore della stipula" value={v.valore_stipula} onChange={(x) => imposta('valore_stipula', x)} />
+            <CampoProtocollo label="Numero di protocollo" value={v.protocollo_stipula} onChange={(x) => imposta('protocollo_stipula', x)} />
+            <CampoData label="Data del protocollo (data di stipula)" value={v.data_stipula} onChange={(x) => imposta('data_stipula', x)} />
+          </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput label="Ordinativo" value={v.ordinativo ?? ''} onChange={(e) => imposta('ordinativo', e.currentTarget.value || null)} maxLength={100} />
             <TextInput
               label="CIG"
               description="Si inserisce con la stipula o dopo"
@@ -196,8 +201,6 @@ export function SezioneStipula({ vista }: PropsSezione) {
               maxLength={20}
               classNames={{ input: 'num' }}
             />
-            <CampoProtocollo label="Numero di protocollo" value={v.protocollo_stipula} onChange={(x) => imposta('protocollo_stipula', x)} />
-            <CampoData label="Data del protocollo (data di stipula)" value={v.data_stipula} onChange={(x) => imposta('data_stipula', x)} />
           </SimpleGrid>
           <Text fz="xs" c="dimmed">
             La stipula è considerata avvenuta quando è indicata la data di stipula: da quel momento il PdS risulta stipulato (in esecuzione).

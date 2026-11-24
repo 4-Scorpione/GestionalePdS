@@ -3,7 +3,7 @@ import { numeroPds, vistePds } from '../../src/domain/calcoli';
 import { aggiungiDurata, aggiungiMesi, differenzaGiorni, formattaData, isDataISO, oggiISO } from '../../src/domain/date';
 import { centesimiDaEuro, formattaEuro, formattaEuroCompatto, formattaPercentuale, parseImporto, valoreImportoDaInput } from '../../src/domain/importi';
 import { puo } from '../../src/domain/permessi';
-import { calcolaSintesi, sforamentoDaSegnalare } from '../../src/domain/sintesi';
+import { calcolaSintesi, impegnoSulCapitolo, sforamentoDaSegnalare } from '../../src/domain/sintesi';
 import { avvisoScadenza, dataScadenza, statoPds } from '../../src/domain/stato';
 import type { Capitolo, DatiCondivisi, Pagamento, Pds, Utente } from '../../src/domain/tipi';
 import { PERMESSI_NESSUNO } from '../../src/domain/tipi';
@@ -193,14 +193,16 @@ describe('sintesi finanziaria', () => {
   const r2 = s.righe.find((r) => r.capitolo.id === 'c2')!;
 
   it('calcola impegnato, stipulato, pagato ed economie per capitolo', () => {
-    expect(r1.inviato).toBe(90_000_00);
-    expect(r1.stipulato).toBe(68_000_00);
+    // ogni fase sostituisce la precedente: p1 conta per il valore a saldo (38.000 − 500 di economia),
+    // p2 per il valore di stipula, p3 (solo inviato) per l'importo inviato
+    expect(r1.inviato).toBe(87_500_00);
+    expect(r1.stipulato).toBe(67_500_00);
     expect(r1.inviatoNonStipulato).toBe(20_000_00);
     expect(r1.pagato).toBe(47_500_00);
     expect(r1.economie).toBe(500_00);
     expect(r1.residuoDaPagare).toBe(20_000_00);
-    expect(r1.percInviato).toBeCloseTo(0.9);
-    expect(r1.percStipulato).toBeCloseTo(0.68);
+    expect(r1.percInviato).toBeCloseTo(0.875);
+    expect(r1.percStipulato).toBeCloseTo(0.675);
     expect(r1.percPagato).toBeCloseTo(0.475);
     expect(r1.nInPreparazione).toBe(1);
     expect(r1.nInviati).toBe(3);
@@ -210,7 +212,8 @@ describe('sintesi finanziaria', () => {
 
   it('segnala lo sforamento senza bloccarlo', () => {
     expect(r1.sforamentoInviato).toBe(0);
-    expect(r2.sforamentoInviato).toBe(10_000_00);
+    // stipulato a 55.000 (inviato a 60.000): anche il trasmesso del capitolo si allinea
+    expect(r2.sforamentoInviato).toBe(5_000_00);
     expect(r2.sforamentoStipulato).toBe(5_000_00);
     expect(s.capitoliInSforamento.map((r) => r.capitolo.codice)).toEqual(['7120']);
   });
@@ -223,17 +226,17 @@ describe('sintesi finanziaria', () => {
   });
 
   it('conteggia le economie nel disponibile da impegnare', () => {
-    // 100.000 finanziati - 68.000 stipulati + 500 di economie
+    // 100.000 finanziati - 67.500 stipulati (68.000 meno 500 di economie)
     expect(r1.disponibileDaImpegnare).toBe(32_500_00);
     expect(r2.disponibileDaImpegnare).toBe(-5_000_00);
   });
 
   it('aggrega il totale complessivo', () => {
     expect(s.totale.finanziato).toBe(150_000_00);
-    expect(s.totale.inviato).toBe(150_000_00);
-    expect(s.totale.stipulato).toBe(123_000_00);
+    expect(s.totale.inviato).toBe(142_500_00);
+    expect(s.totale.stipulato).toBe(122_500_00);
     expect(s.totale.pagato).toBe(47_500_00);
-    expect(s.totale.percPagatoSuStipulato).toBeCloseTo(47_500 / 123_000);
+    expect(s.totale.percPagatoSuStipulato).toBeCloseTo(47_500 / 122_500);
   });
 
   it('mostra il numero del PdS con l’anno dell’esercizio', () => {
@@ -250,19 +253,28 @@ describe('sintesi finanziaria', () => {
     };
     const tutte = vistePds(conEliminato, '2026-06-01', 30);
     const attive = tutte.filter((v) => v.pds.eliminato_at == null);
-    expect(calcolaSintesi(conEliminato.capitoli, attive).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(90_000_00);
-    expect(calcolaSintesi(conEliminato.capitoli, tutte).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(100_000_00);
+    expect(calcolaSintesi(conEliminato.capitoli, attive).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(87_500_00);
+    expect(calcolaSintesi(conEliminato.capitoli, tutte).righe.find((r) => r.capitolo.id === 'c1')!.inviato).toBe(97_500_00);
   });
 
   it('riporta a parte gli incentivi stanziati, esclusi dal residuo da pagare', () => {
     const conIncentivi: DatiCondivisi = { ...dati, pds: dati.pds.map((p) => (p.id === 'p2' ? { ...p, incentivabile: true, importo_incentivi: 600_00 } : p)) };
     const r = calcolaSintesi(conIncentivi.capitoli, vistePds(conIncentivi, '2026-06-01', 30)).righe.find((x) => x.capitolo.id === 'c1')!;
     // l'impegno non cambia: gli incentivi sono una suddivisione del valore del PdS
-    expect(r.stipulato).toBe(68_000_00);
+    expect(r.stipulato).toBe(67_500_00);
     expect(r.incentivi).toBe(600_00);
     expect(r.nIncentivabili).toBe(1);
     // 30.000 stipulati − 600 di incentivi − 10.000 pagati
     expect(r.residuoDaPagare).toBe(19_400_00);
+  });
+
+  it('sul singolo PdS restano i valori di ogni fase, sul capitolo conta solo la fase raggiunta', () => {
+    const v1 = viste.find((v) => v.pds.id === 'p1')!;
+    expect([v1.pds.importo_inviato, v1.pds.valore_stipula]).toEqual([40_000_00, 38_000_00]);
+    expect(impegnoSulCapitolo(v1)).toEqual({ trasmesso: 37_500_00, stipulato: 37_500_00 });
+    expect(impegnoSulCapitolo(viste.find((v) => v.pds.id === 'p5')!)).toEqual({ trasmesso: 55_000_00, stipulato: 55_000_00 });
+    expect(impegnoSulCapitolo(viste.find((v) => v.pds.id === 'p3')!)).toEqual({ trasmesso: 20_000_00, stipulato: 0 });
+    expect(impegnoSulCapitolo(viste.find((v) => v.pds.id === 'p4')!)).toEqual({ trasmesso: 0, stipulato: 0 });
   });
 
   it("calcola l'economia del singolo PdS", () => {

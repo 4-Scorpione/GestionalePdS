@@ -54,10 +54,10 @@ selezionabili) e il PdS compare ovunque come `18/2026`.
 I **protocolli** (invio, stipula, pagamenti) si compilano con il **solo numero** (es. `0089567`) e con la data del campo accanto;
 nelle schermate compaiono come «Prot. n. 0089567 del 15/01/2026».
 
-- **Dati identificativi**: ditta, **accordo quadro** ed eventuale **atto di adesione**, ordinativo, **IDV** (un PdS può essere collegato a più IDV: si digita un codice e si preme Invio) e collaboratore/DEC.
+- **Dati identificativi**: ditta, **accordo quadro** ed eventuale **atto di adesione**, **IDV** (un PdS può essere collegato a più IDV: si digita un codice e si preme Invio) e collaboratore/DEC.
 
 - **Invio del progetto**: importo, protocollo e data. Il PdS risulta *inviato* quando c'è la data di invio.
-- **Stipula**: protocollo, data, valore (può differire dall'importo inviato) e **CIG**, che si inserisce con la stipula o dopo.
+- **Stipula**: protocollo, data, valore (può differire dall'importo inviato), **ordinativo** e **CIG**, che si inseriscono con la stipula o dopo.
   La stipula risulta *avvenuta* quando c'è la data. Alcuni PdS arrivano direttamente con la stipula; per gli altri arriva prima la
   DAC (Determina a Contrarre), si produce l'atto dispositivo e poi si stipula. La casella **«PdS con Determina a Contrarre»** abilita
   protocollo e data della **DAC** e la voce **Atto dispositivo** e, nei pagamenti, codice titolo, codice memoriale e data titolo.
@@ -129,11 +129,16 @@ Elenca i PdS scaduti non saldati e quelli in scadenza entro la soglia scelta (15
 
 Per ogni capitolo dell'esercizio scelto: totale finanziato, **Impegnato (Trasmesso)** e **Impegnato (Stipulato)**
 (tra parentesi gli importi trasmessi non ancora stipulati), pagato, **disponibile da impegnare** e residuo da pagare, con le percentuali.
-Il disponibile da impegnare è il finanziato meno lo stipulato, più le **economie** dei PdS saldati: le economie tornano quindi
-utilizzabili sul capitolo.
+Sul capitolo ogni PdS conta per la fase che ha raggiunto: l'importo inviato finché non è stipulato, poi il valore di stipula
+(che aggiorna anche il trasmesso), poi, a saldo, il valore di stipula meno l'**economia**, come se invio e stipula fossero sempre stati
+di quel valore. Così la sintesi indica quanto è davvero impegnato; la scheda del singolo PdS conserva gli importi di ogni fase e, aprendo
+un capitolo, la colonna «Impegno sul capitolo» mostra quanto conta ciascun PdS.
+Il disponibile da impegnare è il finanziato meno lo stipulato: le economie dei PdS saldati tornano quindi utilizzabili sul capitolo.
 Gli **incentivi stanziati** (quota per incentivi dei PdS trasmessi o stipulati) restano nell'impegnato ma sono una voce a parte
 rispetto al pagato: il residuo da pagare li esclude e l'export Excel ne riporta il resoconto nel foglio «Incentivi».
-Il grafico confronta i valori per capitolo: la linea verticale indica il livello del finanziato.
+Il grafico **Avanzamento per capitolo** mette ogni capitolo in scala sul proprio finanziato (100%, linea verticale): le barre di
+trasmesso, stipulato e pagato si leggono anche tra capitoli di importo molto diverso; gli importi sono nei tooltip e nella tabella.
+L'export Excel contiene lo stesso grafico in percentuale, oltre a quello degli importi.
 L'icona ⚠ e il riquadro rosso segnalano i capitoli in cui l'impegnato supera il finanziato (situazione consentita ma da verificare),
 salvo quelli per cui l'amministratore ha autorizzato il superamento.
 Con la freccia a sinistra di ogni riga si vedono i PdS del capitolo. **Esporta** produce la sintesi in Excel (con il dettaglio dei PdS) o CSV.

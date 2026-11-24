@@ -16,7 +16,6 @@ const VUOTI: ValoriIdentificativi = {
   accordo_id: null,
   atto_adesione_id: null,
   ditta: null,
-  ordinativo: null,
   idv: null,
   dec: null,
 };

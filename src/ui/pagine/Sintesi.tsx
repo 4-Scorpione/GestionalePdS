@@ -4,7 +4,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconShieldCheck } from '@tabler/icons-react';
 import { Fragment, useMemo, useState } from 'react';
 import { formattaEuro, formattaPercentuale } from '../../domain/importi';
-import { calcolaSintesi, inSforamento, sforamentoDaSegnalare, type RigaSintesi, type ValoriSintesi } from '../../domain/sintesi';
+import { calcolaSintesi, impegnoSulCapitolo, inSforamento, sforamentoDaSegnalare, type RigaSintesi, type ValoriSintesi } from '../../domain/sintesi';
 import { stipulaAvvenuta } from '../../domain/stato';
 import { rapportoSintesi } from '../../esportazione/rapporti';
 import { useDerivati } from '../../stato/derivati';
@@ -102,7 +102,7 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
     );
   }
   return (
-    <Table.ScrollContainer minWidth={720}>
+    <Table.ScrollContainer minWidth={840}>
       <Table verticalSpacing={4} fz="sm" withRowBorders={false}>
         <Table.Thead>
           <Table.Tr>
@@ -111,6 +111,11 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
             <Table.Th>Ditta</Table.Th>
             <Table.Th ta="right">Trasmesso</Table.Th>
             <Table.Th ta="right">Stipulato</Table.Th>
+            <Table.Th ta="right">
+              <Tooltip label="Quanto il PdS impegna sul capitolo: importo inviato, poi valore di stipula, poi valore a saldo (stipulato meno economia)">
+                <span>Impegno sul capitolo</span>
+              </Tooltip>
+            </Table.Th>
             <Table.Th ta="right">Pagato</Table.Th>
             <Table.Th ta="right">Incentivi</Table.Th>
           </Table.Tr>
@@ -142,6 +147,9 @@ function DettaglioPdsCapitolo({ riga }: { riga: RigaSintesi }) {
                       </Text>
                     </Tooltip>
                   )}
+                </Table.Td>
+                <Table.Td ta="right">
+                  <Importo valore={impegnoSulCapitolo(v).trasmesso || null} forte />
                 </Table.Td>
                 <Table.Td ta="right">
                   <Importo valore={v.totalePagato} />
@@ -240,14 +248,14 @@ export function Sintesi() {
             <RiquadroValore
               etichetta="Disponibile da impegnare"
               valore={formattaEuro(t.disponibileDaImpegnare)}
-              dettaglio={`Finanziato meno stipulato, comprese le economie dei ${t.nSaldati} PdS saldati (${formattaEuro(t.economie)})`}
+              dettaglio={`Finanziato meno stipulato; le economie dei ${t.nSaldati} PdS saldati (${formattaEuro(t.economie)}) sono già tornate disponibili`}
             />
             <RiquadroValore etichetta="Residuo da pagare" valore={formattaEuro(t.residuoDaPagare)} dettaglio="Stipulato non ancora pagato sui PdS aperti, incentivi esclusi" />
           </SimpleGrid>
 
           <Card>
             <Title order={3} fz="md" mb="md">
-              Confronto per capitolo
+              Avanzamento per capitolo
             </Title>
             <GraficoCapitoli righe={sintesi.righe} />
           </Card>

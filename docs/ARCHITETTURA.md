@@ -80,11 +80,12 @@ Gli importi sono **interi in centesimi** nell'applicazione e nel repository GitH
 **Sintesi per capitolo** (e somma complessiva):
 
 - *Totale finanziato*: dal capitolo.
-- *Impegnato (Trasmesso)*: somma degli importi inviati dei PdS con data di invio (o già stipulati).
-- *Impegnato (Stipulato)*: somma dei valori di stipula dei **soli PdS stipulati**; gli importi trasmessi dei PdS non ancora stipulati sono indicati a parte tra parentesi.
+- *Impegno del PdS sul capitolo* (`impegnoSulCapitolo`): ogni fase sostituisce la precedente. Inviato → importo inviato; stipulato → valore di stipula (anche nel trasmesso del capitolo); saldato → valore di stipula − economia, come se invio e stipula fossero sempre stati di quel valore. Il singolo PdS conserva i valori di ogni fase; nella sintesi la colonna «Impegno sul capitolo» del dettaglio PdS li riconcilia.
+- *Impegnato (Trasmesso)*: somma dell'impegno sul capitolo dei PdS con data di invio (o già stipulati).
+- *Impegnato (Stipulato)*: somma dell'impegno sul capitolo dei **soli PdS stipulati**; gli importi trasmessi dei PdS non ancora stipulati sono indicati a parte tra parentesi.
 - *Effettivo pagato*: somma di tutti i pagamenti registrati.
-- *Economie*: somma delle economie dei PdS saldati; non sono esposte come voce a sé ma rientrano nel disponibile.
-- *Disponibile da impegnare*: finanziato − stipulato + economie.
+- *Economie*: somma delle economie dei PdS saldati; sono già tolte dall'impegnato e quindi tornano nel disponibile.
+- *Disponibile da impegnare*: finanziato − stipulato (al netto delle economie).
 - *Residuo da pagare*: per i PdS stipulati e non saldati, valore di stipula − pagato.
 - Percentuali sul finanziato (e pagato sullo stipulato, che a fine esercizio tende al 100% meno le economie).
 - *Superamento del finanziato*: impegnato (trasmesso o stipulato) superiore al finanziato. Non è bloccato: è evidenziato con icona ed etichetta nella sintesi, nell'elenco dei capitoli e nella panoramica, salvo i capitoli per cui l'amministratore ha autorizzato il superamento motivandolo.

@@ -1,6 +1,7 @@
 import { importoImpegnato, scadenzaContrattuale, type VistaAccordo } from '../domain/accordi';
 import { invioAvvenuto } from '../domain/stato';
 import { etichettaCapitolo, type PdsVista } from '../domain/calcoli';
+import { impegnoSulCapitolo } from '../domain/sintesi';
 import { euroDaCentesimi } from '../domain/importi';
 import type { RigaSintesi, SintesiFinanziaria } from '../domain/sintesi';
 import { ELENCO_STATI, STATI, type StatoPds } from '../domain/stato';
@@ -77,9 +78,10 @@ export function rapportoElencoPds(viste: PdsVista[], esercizio: number): Rapport
   for (const v of viste) {
     const codice = v.capitolo ? etichettaCapitolo(v.capitolo, false) : 'senza capitolo';
     const r = perCapitolo.get(codice) ?? { capitolo: codice, nPds: 0, trasmesso: 0, stipulato: 0, pagato: 0 };
+    const impegno = impegnoSulCapitolo(v);
     r.nPds += 1;
-    r.trasmesso += v.pds.data_invio || v.pds.data_stipula ? (v.pds.importo_inviato ?? 0) : 0;
-    r.stipulato += v.pds.data_stipula ? (v.pds.valore_stipula ?? 0) : 0;
+    r.trasmesso += impegno.trasmesso;
+    r.stipulato += impegno.stipulato;
     r.pagato += v.totalePagato;
     perCapitolo.set(codice, r);
   }
@@ -161,6 +163,22 @@ export function rapportoSintesi(sintesi: SintesiFinanziaria, esercizio: number):
       foglio('Incentivi', COLONNE_INCENTIVI, pds.filter((v) => v.incentivi > 0 && invioAvvenuto(v.pds))),
     ],
     grafici: [
+      // in percentuale del finanziato di ogni capitolo: leggibile anche con importi molto diversi
+      {
+        foglio: 0,
+        nomeFoglio: 'Sintesi per capitolo',
+        titolo: `Avanzamento sul finanziato per capitolo · esercizio ${esercizio}`,
+        tipo: 'barreOrizzontali',
+        categorie: 1,
+        serie: [
+          { colonna: 4, colore: COLORI.trasmesso },
+          { colonna: 6, colore: COLORI.stipulato },
+          { colonna: 9, colore: COLORI.pagato },
+        ],
+        righe: righe.length,
+        ancoraRiga: sotto(righe.length, true),
+        formatoAsse: '0%',
+      },
       {
         foglio: 0,
         nomeFoglio: 'Sintesi per capitolo',
@@ -174,7 +192,7 @@ export function rapportoSintesi(sintesi: SintesiFinanziaria, esercizio: number):
           { colonna: 8, colore: COLORI.pagato },
         ],
         righe: righe.length,
-        ancoraRiga: sotto(righe.length, true),
+        ancoraRiga: sotto(righe.length, true) + 20,
       },
       {
         foglio: 0,
@@ -187,7 +205,7 @@ export function rapportoSintesi(sintesi: SintesiFinanziaria, esercizio: number):
           { colonna: 14, colore: COLORI.trasmesso },
         ],
         righe: righe.length,
-        ancoraRiga: sotto(righe.length, true) + 20,
+        ancoraRiga: sotto(righe.length, true) + 40,
       },
     ],
   };

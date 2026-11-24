@@ -128,8 +128,8 @@ describe('rapporti esportabili', () => {
     expect(r.fogli.map((f) => f.nome)).toEqual(['Progetti di spesa', 'Riepilogo per capitolo', 'Riepilogo per stato']);
     const perCapitolo = r.fogli[1];
     expect(perCapitolo.righe).toHaveLength(1);
-    // 120.000 + 80.000 + 40.000 trasmessi sul capitolo 1181
-    expect(perCapitolo.colonne[2].valore(perCapitolo.righe[0] as never)).toBe(240_000);
+    // 115.000 (il PdS 1, inviato a 120.000, è stipulato a 115.000) + 80.000 + 40.000 trasmessi sul capitolo 1181
+    expect(perCapitolo.colonne[2].valore(perCapitolo.righe[0] as never)).toBe(235_000);
     expect(perCapitolo.colonne[3].valore(perCapitolo.righe[0] as never)).toBe(115_000);
   });
 

@@ -17,7 +17,6 @@ export interface ValoriIdentificativi {
   accordo_id: ID | null;
   atto_adesione_id: ID | null;
   ditta: string | null;
-  ordinativo: string | null;
   idv: string | null;
   dec: string | null;
 }
@@ -171,7 +170,6 @@ export function CampiIdentificativiPds({
         nothingFoundMessage="Nessun atto di adesione"
         comboboxProps={{ withinPortal: true }}
       />
-      <TextInput label="Ordinativo" value={valori.ordinativo ?? ''} onChange={(e) => imposta('ordinativo', e.currentTarget.value || null)} maxLength={100} />
       <TagsInput
         label="IDV"
         description={descrizioneIdv || 'Uno o più IDV del capitolo: premere Invio dopo ogni codice. Senza fondi assegnati si lascia vuoto'}

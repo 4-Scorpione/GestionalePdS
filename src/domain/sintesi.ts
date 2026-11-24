@@ -4,19 +4,37 @@ import { invioAvvenuto, stipulaAvvenuta } from './stato';
 import type { Capitolo, Centesimi } from './tipi';
 
 /**
+ * Impegno del PdS sulla situazione del capitolo: ogni fase sostituisce la precedente.
+ * - Inviato: conta l'importo inviato.
+ * - Stipulato: conta il valore di stipula, anche nel trasmesso del capitolo.
+ * - Saldato: conta il valore di stipula meno l'economia, come se invio e stipula
+ *   fossero sempre stati di quel valore.
+ * Il singolo PdS conserva comunque i valori di ogni fase.
+ */
+export function impegnoSulCapitolo(v: PdsVista): { trasmesso: Centesimi; stipulato: Centesimi } {
+  const p = v.pds;
+  if (stipulaAvvenuta(p)) {
+    const economia = p.saldato ? (v.economia ?? 0) : 0;
+    return { trasmesso: (p.valore_stipula ?? p.importo_inviato ?? 0) - economia, stipulato: (p.valore_stipula ?? 0) - economia };
+  }
+  return { trasmesso: invioAvvenuto(p) ? (p.importo_inviato ?? 0) : 0, stipulato: 0 };
+}
+
+/**
  * Sintesi finanziaria (sez. 6).
- * - Impegnato (Trasmesso): somma degli importi inviati dei PdS inviati.
- * - Impegnato (Stipulato): somma dei valori di stipula dei soli PdS stipulati;
- *   gli importi dei PdS inviati ma non ancora stipulati sono riportati a parte
- *   ("tra parentesi"). Un PdS scaduto resta conteggiato tra gli stipulati.
+ * - Impegnato (Trasmesso): impegno dei PdS trasmessi, aggiornato al valore di
+ *   stipula e, dopo il saldo, al netto dell'economia (vedi `impegnoSulCapitolo`).
+ * - Impegnato (Stipulato): impegno dei soli PdS stipulati, al netto delle economie
+ *   dei saldati; gli importi dei PdS inviati ma non ancora stipulati sono riportati
+ *   a parte ("tra parentesi"). Un PdS scaduto resta conteggiato tra gli stipulati.
  * - Effettivo pagato: somma di tutti i pagamenti registrati.
  * - Incentivi stanziati: quota del valore dei PdS impegnati (trasmessi o
  *   stipulati) riservata agli incentivi. Resta nell'impegnato ma non si paga con
  *   i pagamenti alla ditta: è riportata a parte, accanto al pagato, e non entra
  *   nel residuo da pagare.
  * - Economie: somma delle economie dei PdS saldati (calcolate come stipulato −
- *   incentivi − pagato a saldo, o corrette dall'utente); non sono esposte come
- *   voce a sé ma rientrano nel disponibile da impegnare.
+ *   incentivi − pagato a saldo, o corrette dall'utente). Sono già tolte
+ *   dall'impegnato, quindi tornano nel disponibile da impegnare.
  */
 export interface ValoriSintesi {
   finanziato: Centesimi;
@@ -32,9 +50,7 @@ export interface ValoriSintesi {
   economie: Centesimi;
   /** Quanto resta da pagare alla ditta sui PdS stipulati e non ancora saldati (incentivi esclusi). */
   residuoDaPagare: Centesimi;
-  /** Finanziato non ancora impegnato con stipula (negativo in caso di sforamento). */
-  disponibileSuStipulato: Centesimi;
-  /** Importo ancora impegnabile sul capitolo: finanziato − stipulato + economie. */
+  /** Importo ancora impegnabile sul capitolo: finanziato − stipulato (già al netto delle economie). */
   disponibileDaImpegnare: Centesimi;
   percInviato: number | null;
   percStipulato: number | null;
@@ -64,13 +80,12 @@ export interface SintesiFinanziaria {
 function completa(
   v: Omit<
     ValoriSintesi,
-    'percInviato' | 'percStipulato' | 'percPagato' | 'percPagatoSuStipulato' | 'sforamentoInviato' | 'sforamentoStipulato' | 'disponibileSuStipulato' | 'disponibileDaImpegnare'
+    'percInviato' | 'percStipulato' | 'percPagato' | 'percPagatoSuStipulato' | 'sforamentoInviato' | 'sforamentoStipulato' | 'disponibileDaImpegnare'
   >,
 ): ValoriSintesi {
   return {
     ...v,
-    disponibileSuStipulato: v.finanziato - v.stipulato,
-    disponibileDaImpegnare: v.finanziato - v.stipulato + v.economie,
+    disponibileDaImpegnare: v.finanziato - v.stipulato,
     percInviato: rapporto(v.inviato, v.finanziato),
     percStipulato: rapporto(v.stipulato, v.finanziato),
     percPagato: rapporto(v.pagato, v.finanziato),
@@ -96,9 +111,10 @@ export function valoriCapitolo(finanziato: Centesimi, elenco: PdsVista[]): Valor
   for (const v of elenco) {
     const p = v.pds;
     pagato += v.totalePagato;
+    const impegno = impegnoSulCapitolo(v);
     if (invioAvvenuto(p)) {
       nInviati++;
-      inviato += p.importo_inviato ?? 0;
+      inviato += impegno.trasmesso;
       if (v.incentivi > 0) {
         nIncentivabili++;
         incentivi += v.incentivi;
@@ -108,7 +124,7 @@ export function valoriCapitolo(finanziato: Centesimi, elenco: PdsVista[]): Valor
     }
     if (stipulaAvvenuta(p)) {
       nStipulati++;
-      stipulato += p.valore_stipula ?? 0;
+      stipulato += impegno.stipulato;
       if (!p.saldato) residuoDaPagare += Math.max(0, (p.valore_stipula ?? 0) - v.incentivi - v.totalePagato);
     } else if (invioAvvenuto(p)) {
       inviatoNonStipulato += p.importo_inviato ?? 0;

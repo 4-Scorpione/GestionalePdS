@@ -38,7 +38,6 @@ test.describe('modalità dimostrativa', () => {
     await scegli(page, modalePds.getByRole('combobox', { name: 'Capitolo di spesa' }), /9001/);
     await modalePds.getByLabel('Ditta').fill('Formazione Continua S.r.l.');
     await modalePds.getByLabel('Collaboratore o DEC').fill('Ing. Prova');
-    await modalePds.getByLabel('Ordinativo').fill('ODA-TEST-1');
     await modalePds.getByLabel('Importo del PdS inviato').fill('8000');
     await modalePds.getByLabel('Numero di protocollo').fill('0000990');
     await compilaData(modalePds.getByLabel('Data di invio'), '10/01/2026');
@@ -50,6 +49,7 @@ test.describe('modalità dimostrativa', () => {
     const stipula = scheda(page, 'Stipula');
     await stipula.getByRole('button', { name: 'Modifica' }).click();
     await stipula.getByLabel('Valore della stipula').fill('7500');
+    await stipula.getByLabel('Ordinativo').fill('ODA-TEST-1');
     await stipula.getByLabel('Numero di protocollo').fill('0000123');
     await compilaData(stipula.getByLabel('Data del protocollo (data di stipula)'), '01/02/2026');
     await stipula.getByRole('button', { name: 'Salva' }).click();
@@ -102,9 +102,11 @@ test.describe('modalità dimostrativa', () => {
     await vaiA(page, 'Sintesi finanziaria');
     const riga = page.getByRole('row').filter({ hasText: '9001' });
     await expect(riga).toContainText('10.000,00 €');
-    await expect(riga).toContainText('7.500,00 €');
+    // a saldo con 100 € di economia il capitolo conta 7.400 € sia nel trasmesso (inviati 8.000) sia nello stipulato (7.500)
     await expect(riga).toContainText('7.400,00 €');
-    // disponibile da impegnare: 10.000 - 7.500 + 100 di economie
+    await expect(riga).not.toContainText('8.000,00 €');
+    await expect(riga).not.toContainText('7.500,00 €');
+    // disponibile da impegnare: 10.000 - 7.400
     await expect(riga).toContainText('2.600,00 €');
 
     // Esportazione dell'elenco PdS filtrato

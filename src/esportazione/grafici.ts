@@ -30,6 +30,8 @@ export interface DefinizioneGrafico {
   righe: number;
   /** Riga (0-based) da cui iniziare a disegnare il grafico. */
   ancoraRiga: number;
+  /** Formato dei valori sull'asse (predefinito: numero intero con separatore delle migliaia). */
+  formatoAsse?: string;
   /** Colonna (0-based) da cui iniziare a disegnare il grafico. */
   ancoraColonna?: number;
   larghezzaColonne?: number;
@@ -102,7 +104,7 @@ function graficoXml(g: DefinizioneGrafico): string {
     '<c:plotArea><c:layout/>' +
     corpo +
     `<c:catAx><c:axId val="${AX_CAT}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX_VAL}"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>` +
-    `<c:valAx><c:axId val="${AX_VAL}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/><c:numFmt formatCode="#,##0" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX_CAT}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>` +
+    `<c:valAx><c:axId val="${AX_VAL}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/><c:numFmt formatCode="${g.formatoAsse ?? '#,##0'}" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${AX_CAT}"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>` +
     '</c:plotArea>' +
     '<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>' +
     '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/>' +
