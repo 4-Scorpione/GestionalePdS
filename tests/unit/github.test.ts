@@ -213,6 +213,17 @@ describe('backend GitHub: utenti e credenziali', () => {
     expect((await erroreDi(nuovoBackend().rinnovaTokenEAccedi('ospite', 'password-ospite-1', TOKEN_2, false))).codice).toBe('PERMESSO_NEGATO');
   });
 
+  it('dopo il trasferimento dei repository il token del vecchio account si rinnova dalla pagina di accesso', async () => {
+    await configura();
+    // il token resta valido ma non vede più il repository privato dei dati
+    gh.tokenSenzaAccesso.add(TOKEN);
+    expect((await erroreDi(accedi('admin', PWD_ADMIN))).codice).toBe('TOKEN_SCADUTO');
+    gh.tokenValidi.add(TOKEN_2);
+    const nuovo = nuovoBackend();
+    await nuovo.avvia();
+    expect((await nuovo.rinnovaTokenEAccedi('admin', PWD_ADMIN, TOKEN_2, false)).utente.ruolo).toBe('admin');
+  });
+
   it('sostituisce il token: le password restano valide e le vecchie sessioni decadono', async () => {
     const { b } = await configura();
     await b.esegui({ tipo: 'utente.crea', dati: { username: 'ospite', nome: 'Ospite', ruolo: 'utente', attivo: true, permessi: { ...PERMESSI_NESSUNO } }, password: 'password-ospite-1' });

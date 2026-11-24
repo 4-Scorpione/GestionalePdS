@@ -329,8 +329,11 @@ export class GitHubBackend implements Backend {
       this.chiavi = null;
       if (e instanceof ErroreApp && e.codice === 'AUTENTICAZIONE') {
         throw chiavi.ka
-          ? new ErroreApp('TOKEN_SCADUTO', 'Il token di accesso a GitHub è scaduto o è stato revocato. Come amministratore puoi inserire un nuovo token per ripristinare l’accesso di tutti gli utenti.')
-          : new ErroreApp('AUTENTICAZIONE', "Il token di accesso a GitHub è scaduto o è stato revocato: l'amministratore deve rinnovarlo accedendo al gestionale.");
+          ? new ErroreApp(
+              'TOKEN_SCADUTO',
+              `Il token di accesso a GitHub è scaduto, revocato o non ha accesso ai repository di ${this.owner}. Come amministratore puoi inserire un nuovo token, creato dall'account ${this.owner}, per ripristinare l’accesso di tutti gli utenti.`,
+            )
+          : new ErroreApp('AUTENTICAZIONE', "Il token di accesso a GitHub è scaduto, revocato o non ha accesso ai repository: l'amministratore deve rinnovarlo accedendo al gestionale.");
       }
       throw e;
     }
@@ -442,6 +445,11 @@ export class GitHubBackend implements Backend {
       const api = this.richiediApi();
       const commit = await api.leggiRef(this.owner, this.repoDati, this.ramo);
       if (!commit) {
+        // GitHub risponde 404 anche se il token non vede il repository privato
+        // (es. token creato da un altro account, prima del trasferimento dei repository)
+        if (!(await api.leggiRepository(this.owner, this.repoDati))) {
+          throw new ErroreApp('AUTENTICAZIONE', `Il token di accesso non ha accesso al repository dei dati ${this.owner}/${this.repoDati}: va sostituito.`);
+        }
         throw new ErroreApp('CONFIGURAZIONE', `Il repository dei dati ${this.owner}/${this.repoDati} è vuoto o il ramo "${this.ramo}" non esiste.`);
       }
       if (!forza && this.dati && this.testa?.commit === commit) return this.dati;

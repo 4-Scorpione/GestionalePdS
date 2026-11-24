@@ -28,6 +28,8 @@ function risposta(status: number, corpo?: unknown, headers: Record<string, strin
 export class MockGitHub {
   readonly repos = new Map<string, Repo>();
   readonly tokenValidi = new Set<string>();
+  /** Token validi che non vedono i repository privati (es. fine-grained di un altro account). */
+  readonly tokenSenzaAccesso = new Set<string>();
   richieste = 0;
   /** Se impostato, simula l'irraggiungibilità di raw.githubusercontent.com. */
   rawBloccato = false;
@@ -100,7 +102,7 @@ export class MockGitHub {
     if (parti[0] !== 'repos') return risposta(404, { message: 'Not Found' });
     const nomeRepo = `${parti[1]}/${parti[2]}`;
     const repo = this.repos.get(nomeRepo);
-    if (!repo || (repo.private && !token)) return risposta(404, { message: 'Not Found' });
+    if (!repo || (repo.private && (!token || this.tokenSenzaAccesso.has(token)))) return risposta(404, { message: 'Not Found' });
     const testoCorpo = init.body == null ? '' : typeof init.body === 'string' ? init.body : new TextDecoder().decode(init.body as Uint8Array);
     const corpo = testoCorpo ? JSON.parse(testoCorpo) : undefined;
     const scrittura = metodo !== 'GET';
