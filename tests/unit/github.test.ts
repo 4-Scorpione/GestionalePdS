@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { archivioMemoria } from '../../src/backend/archivi';
 import { GitHubBackend } from '../../src/backend/github/GitHubBackend';
+import { creaKeyring, impostaCredenziali, ruotaChiavi, sbloccaKeyring } from '../../src/backend/github/keyring';
 import { ErroreApp } from '../../src/domain/errori';
 import { PERMESSI_NESSUNO } from '../../src/domain/tipi';
 import { MockGitHub } from './mockGitHub';
@@ -242,5 +243,20 @@ describe('backend GitHub: utenti e credenziali', () => {
     // l'amministratore continua a lavorare con il nuovo token
     await b.esegui({ tipo: 'capitolo.crea', dati: { esercizio: 2026, codice: '9', descrizione: '', finanziato: 0, sforamento_ignorato: false, sforamento_note: '' } });
     expect((await erroreDi(vecchiaSessione.caricaDati(true))).codice).toBe('AUTENTICAZIONE');
+  });
+});
+
+describe('portachiavi: rotazione del token', () => {
+  it('una seconda rotazione con chiavi superate viene respinta invece di escludere tutti gli utenti', async () => {
+    const { keyring, chiavi } = await creaKeyring('token-1-abcdefghijklmnop', 'admin', 'password-admin-1', 1000);
+    const conUtente = await impostaCredenziali(keyring, chiavi, 'ospite', 'password-ospite-1', false);
+    const prima = await ruotaChiavi(conUtente, chiavi, 'token-2-abcdefghijklmnop');
+    expect(Object.keys(prima.keyring.utenti)).toHaveLength(2);
+    // stesse chiavi di prima della rotazione, sul portachiavi già ruotato (es. doppio invio)
+    await expect(ruotaChiavi(prima.keyring, chiavi, 'token-2-abcdefghijklmnop')).rejects.toMatchObject({ codice: 'CONFLITTO' });
+    // con le chiavi aggiornate la rotazione resta possibile e conserva tutti gli utenti
+    const seconda = await ruotaChiavi(prima.keyring, prima.chiavi, 'token-3-abcdefghijklmnop');
+    expect(Object.keys(seconda.keyring.utenti)).toHaveLength(2);
+    expect((await sbloccaKeyring(seconda.keyring, 'admin', 'password-admin-1')).token).toBe('token-3-abcdefghijklmnop');
   });
 });
