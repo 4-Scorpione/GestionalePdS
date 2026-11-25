@@ -20,8 +20,8 @@ Tutti gli utenti attivi **consultano** tutti i dati. Le modifiche dipendono dai 
 | Capitoli di spesa | creare, modificare ed eliminare capitoli e finanziamenti |
 | Accordi quadro | creare, modificare ed eliminare accordi quadro e atti di adesione |
 | Creazione ed eliminazione PdS | inserire nuovi PdS ed eliminarli (l'eliminazione è recuperabile: vedi «PdS eliminati») |
-| Dati del PdS | modificare dati identificativi, invio, stipula, tempi di esecuzione e note |
-| Pagamenti e saldo | registrare pagamenti, confermare o annullare il saldo |
+| Dati del PdS | modificare dati identificativi, invio, stipula (con DAC e atto dispositivo), attività incentivabile, tempi di esecuzione e note |
+| Pagamenti e saldo | registrare pagamenti, confermare o annullare il saldo, correggere l'economia |
 | Allegati | aggiungere ed eliminare documenti e collegamenti |
 
 I permessi sui PdS possono essere limitati ad alcuni capitoli (per codice, validi in tutti gli esercizi).
@@ -161,4 +161,4 @@ Nella pagina «Capitoli di spesa» il pulsante **Allineamento SIEFIN** carica l'
 - **Capitolo = CPT/ART/PTF + decreto**: lo stesso codice con decreti diversi dà capitoli distinti (es. `1189/7/61` «Fuori Area 2026 - Anticipazione» e «Fuori Area 2025 - Completamento»). Il decreto compare in piccolo sotto il codice.
 - Il **finanziato** del capitolo è la somma degli assegnati dei suoi IDV più gli eventuali **fondi aggiunti manualmente** (matita sul capitolo). Il numero nella colonna IDV apre il dettaglio delle voci.
 - Un nuovo caricamento **riallinea** e non somma: gli IDV dei capitoli presenti nel file sostituiscono quelli registrati. Fondi manuali e capitoli assenti dal file restano invariati.
-- Nei PdS l'**IDV si digita** e deve esistere sul capitolo scelto (il primo IDV riconosciuto seleziona il capitolo). Se i fondi non sono ancora assegnati, il PdS si inserisce senza IDV.
+- Nei PdS gli **IDV si scelgono dalla tendina**, che mostra solo gli IDV del capitolo scelto per quell'esercizio. Se i fondi non sono ancora assegnati, il PdS si inserisce senza IDV.
