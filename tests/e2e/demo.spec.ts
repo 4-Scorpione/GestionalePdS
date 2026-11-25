@@ -288,22 +288,22 @@ test.describe('modalità dimostrativa', () => {
     await expect(page.getByRole('dialog').getByText('Esigenze varie')).toBeVisible();
     await page.keyboard.press('Escape');
 
-    // l'IDV digitato deve esistere e determina il capitolo
+    // gli IDV si scelgono dalla tendina, tra quelli del capitolo scelto
     await vaiA(page, 'Progetti di spesa');
     await page.getByRole('button', { name: 'Nuovo PdS' }).click();
     const modalePds = page.getByRole('dialog');
     await modalePds.getByLabel('Numero del progetto di spesa').fill('901');
     const idv = modalePds.getByLabel('IDV', { exact: true });
-    await idv.fill('123');
-    await idv.press('Enter');
-    await expect(modalePds.getByText(/IDV non presente nell'esercizio 2026: 123/)).toBeVisible();
-    await idv.press('Backspace');
-    await idv.fill('7770001');
-    await idv.press('Enter');
-    await expect(modalePds.getByRole('combobox', { name: 'Capitolo di spesa' })).toHaveValue('1189/7/61 Fuori Area 2026 - Anticipazione');
+    await expect(idv).toBeDisabled();
+    await scegli(page, modalePds.getByRole('combobox', { name: 'Capitolo di spesa' }), /1189\/7\/61 Fuori Area 2026 - Anticipazione/);
+    await idv.click();
+    await expect(page.getByRole('option')).toHaveCount(1);
+    await page.getByRole('option', { name: /7770001/ }).click();
+    await modalePds.getByText('Nuovo progetto di spesa').click();
     await modalePds.getByRole('button', { name: 'Crea PdS' }).click();
     await page.getByRole('button', { name: 'Crea comunque' }).click();
     await expect(page.getByRole('heading', { name: /PdS 901\/2026/ })).toBeVisible();
+    await expect(page.getByText('7770001').first()).toBeVisible();
     await vaiA(page, 'Progetti di spesa');
     await expect(page.getByRole('row').filter({ hasText: '901/2026' })).toContainText('Fuori Area 2026 - Anticipazione');
   });

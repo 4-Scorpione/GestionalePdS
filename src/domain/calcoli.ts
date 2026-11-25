@@ -1,7 +1,7 @@
 import { formattaData } from './date';
 import { rapporto, sommaCentesimi } from './importi';
 import { avvisoScadenza, dataScadenza, statoPds, type LivelloAvviso, type StatoPds } from './stato';
-import type { AccordoQuadro, Allegato, AttoAdesione, Capitolo, Centesimi, DataISO, DatiCondivisi, FondoIdv, ID, Pagamento, Pds } from './tipi';
+import type { AccordoQuadro, Allegato, AttoAdesione, Capitolo, Centesimi, DataISO, DatiCondivisi, ID, Pagamento, Pds } from './tipi';
 
 /** PdS con tutti i valori derivati, pronto per elenchi, filtri ed export. */
 export interface PdsVista {
@@ -118,16 +118,6 @@ export function ordinaCapitoli(capitoli: Capitolo[]): Capitolo[] {
 /** Totale finanziato del capitolo: fondi degli IDV allineati dal SIEFIN più quelli aggiunti manualmente. */
 export function finanziatoCapitolo(c: Pick<Capitolo, 'finanziato' | 'idv'>): Centesimi {
   return c.finanziato + sommaCentesimi((c.idv ?? []).map((f) => f.assegnato));
-}
-
-/** IDV dei capitoli di un esercizio, con il capitolo a cui appartengono. */
-export function idvPerCodice(capitoli: Capitolo[], esercizio: number): Map<string, { fondo: FondoIdv; capitolo: Capitolo }> {
-  const mappa = new Map<string, { fondo: FondoIdv; capitolo: Capitolo }>();
-  for (const capitolo of capitoli) {
-    if (capitolo.esercizio !== esercizio) continue;
-    for (const fondo of capitolo.idv ?? []) mappa.set(fondo.idv, { fondo, capitolo });
-  }
-  return mappa;
 }
 
 export function eserciziDisponibili(dati: Pick<DatiCondivisi, 'capitoli'>): number[] {

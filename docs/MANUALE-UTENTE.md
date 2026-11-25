@@ -54,7 +54,7 @@ selezionabili) e il PdS compare ovunque come `18/2026`.
 I **protocolli** (invio, stipula, pagamenti) si compilano con il **solo numero** (es. `0089567`) e con la data del campo accanto;
 nelle schermate compaiono come «Prot. n. 0089567 del 15/01/2026».
 
-- **Dati identificativi**: ditta, **accordo quadro** ed eventuale **atto di adesione**, **IDV** (un PdS può essere collegato a più IDV: si digita un codice e si preme Invio) e collaboratore/DEC.
+- **Dati identificativi**: ditta, **accordo quadro** ed eventuale **atto di adesione**, **IDV** (facoltativi: si scelgono dalla tendina, che mostra gli IDV del capitolo scelto per quell'esercizio; un PdS può averne più di uno) e collaboratore/DEC.
 
 - **Invio del progetto**: importo, protocollo e data. Il PdS risulta *inviato* quando c'è la data di invio.
 - **Stipula**: protocollo, data, valore (può differire dall'importo inviato), **ordinativo** e **CIG**, che si inseriscono con la stipula o dopo.
