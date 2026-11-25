@@ -36,7 +36,6 @@ export function GraficoCapitoli({ righe }: { righe: RigaSintesi[] }) {
   const fondo = massima <= 1 ? 1 : Math.min(QUOTA_MASSIMA, Math.ceil(massima * 10) / 10);
   const tacche = [...(stretto ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1]), ...(fondo > 1 ? [fondo] : [])];
   const posizione = (quota: number) => `${(Math.min(quota, fondo) / fondo) * 100}%`;
-  const traccia = `color-mix(in srgb, ${colori.finanziato} 28%, transparent)`;
 
   const legenda = (
     <Group gap="md" wrap="wrap" component="ul" style={{ listStyle: 'none', padding: 0, margin: 0 }} aria-label="Legenda">
@@ -49,7 +48,7 @@ export function GraficoCapitoli({ righe }: { righe: RigaSintesi[] }) {
         </Group>
       ))}
       <Group gap={6} component="li" wrap="nowrap">
-        <span aria-hidden style={{ width: 14, height: 12, borderRadius: 2, background: traccia, borderRight: '1px solid var(--pds-inchiostro-2)', display: 'inline-block' }} />
+        <span aria-hidden style={{ width: 1, height: 14, background: 'var(--pds-inchiostro-2)', display: 'inline-block' }} />
         <Text fz="xs" c="var(--pds-inchiostro-2)">
           Finanziato del capitolo (100%)
         </Text>
@@ -111,8 +110,6 @@ export function GraficoCapitoli({ righe }: { righe: RigaSintesi[] }) {
                 </Text>
               ) : (
                 <div style={{ position: 'relative', paddingBlock: stretto ? '0 12px' : 10, borderTop: stretto ? undefined : '1px solid var(--pds-griglia)' }}>
-                  {/* traccia del finanziato: da 0 al 100% del capitolo */}
-                  <div aria-hidden style={{ position: 'absolute', top: stretto ? 0 : 6, bottom: stretto ? 8 : 6, left: 0, width: posizione(1), background: traccia, borderRadius: '0 3px 3px 0' }} />
                   {griglia}
                   {SERIE.map((s) => {
                     const valore = r[s.chiave];

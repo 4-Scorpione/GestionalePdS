@@ -195,7 +195,6 @@ export function SezioneStipula({ vista }: PropsSezione) {
             <TextInput label="Ordinativo" value={v.ordinativo ?? ''} onChange={(e) => imposta('ordinativo', e.currentTarget.value || null)} maxLength={100} />
             <TextInput
               label="CIG"
-              description="Si inserisce con la stipula o dopo"
               value={v.cig ?? ''}
               onChange={(e) => imposta('cig', e.currentTarget.value.toUpperCase() || null)}
               maxLength={20}
